@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx --yes supabase status *)",
+      "Bash(npx --yes supabase test db *)",
+      "Bash(npx --yes supabase migration list *)",
+      "Bash(npx --yes supabase migration new *)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run typecheck --prefix *)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint --prefix *)",
+      "Bash(npm run test)",
+      "Bash(npm run test --prefix *)",
+      "Bash(docker info *)"
+    ]
+  }
+}
