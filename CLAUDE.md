@@ -114,6 +114,19 @@ Trivial one-liners can skip this. Anything touching submissions, RLS, or email m
 
 **6. Commit.** Conventional Commits, single-line messages. Verify only your files are staged: `git -C /c/AI/claude/costcompare diff --cached --name-only`. Push after approval.
 
+## Issue hygiene
+
+Backlog tracked as GitHub issues on `chaisty/costcompare`, labels + milestones only (no Projects board — overkill for a single-agent serial project).
+
+- **Issues for chunky work:** anything that spans a session, has real design questions, or benefits from a written acceptance list. MVP has 8 such issues; `v1.1` holds the post-MVP backlog.
+- **No issues for trivia:** one-file fixes, doc tweaks, dependency bumps — a good commit message is enough.
+- **Labels:** `phase-1` (MVP), `phase-2` (backlog), plus area labels (`schema`, `backend`, `frontend`, `etl`, `security`, `ops`). Stacked, not exclusive.
+- **Milestones:** `MVP` for the launchable slice, `v1.1` for the known post-MVP backlog.
+- **Closes discipline:** when an issue-scoped piece of work lands, reference it in the commit (`feat: ... (Closes #N)`) so the issue closes on push.
+- **`gh issue create` bodies go in `--body-file`, not `--body`.** Markdown headers inline in `--body` trigger approval prompts in this environment.
+
+If we ever scale to parallel agents, add a Projects board and tighten the one-PR-per-issue discipline — don't preemptively.
+
 ## Shell conventions
 
 - **Never** combine `cd` with `&&`, `||`, or `;`. Use `git -C <absolute-path> ...` instead.
