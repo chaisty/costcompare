@@ -12,6 +12,7 @@ A web app where patients submit and search cash-pay quoted rates for medical pro
 |---|---|
 | This file | Architecture, conventions, workflow, security rules |
 | `diary/` | Per-session notes — decisions, surprises, context that doesn't survive in code |
+| `docs/research/` | External analyses kept for product/data-model guidance (e.g. comparable products, submission-field recommendations) — informed input, not gospel |
 
 No separate `CONVENTIONS.md`, no `planning/` or `decisions/` directories at this stage — the project is small enough that this file plus the diary capture the reasoning. Add them only if the project outgrows a single doc.
 
