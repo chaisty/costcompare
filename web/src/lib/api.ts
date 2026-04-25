@@ -20,6 +20,7 @@ export type SubmitFacilityNpi = {
   name: string;
   city: string | null;
   state: string | null;
+  taxonomy_label: string | null;
 };
 
 export type SubmitProviderNpi = {

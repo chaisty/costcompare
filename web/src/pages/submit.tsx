@@ -91,6 +91,7 @@ export function SubmitPage() {
                 name: facility.name,
                 city: facility.city,
                 state: facility.state,
+                taxonomy_label: facility.taxonomy,
               },
             }
           : {}),

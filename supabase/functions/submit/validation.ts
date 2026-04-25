@@ -13,6 +13,7 @@ export type FacilityNpiInput = {
   name: string;
   city: string | null;
   state: string | null;
+  taxonomy_label: string | null;
 };
 
 export type ProviderNpiInput = {
@@ -71,7 +72,9 @@ function parseFacility(v: unknown): FacilityNpiInput | 'invalid' {
   if (stateRaw === 'invalid') return 'invalid';
   const state = stateRaw === null ? null : stateRaw.toUpperCase();
   if (state !== null && !STATE_PATTERN.test(state)) return 'invalid';
-  return { npi: v.npi, name: v.name.trim(), city, state };
+  const taxonomy_label = optionalString(v.taxonomy_label, 200);
+  if (taxonomy_label === 'invalid') return 'invalid';
+  return { npi: v.npi, name: v.name.trim(), city, state, taxonomy_label };
 }
 
 function parseProvider(v: unknown): ProviderNpiInput | 'invalid' {

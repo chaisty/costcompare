@@ -17,6 +17,31 @@ type SupabaseLike = any;
 
 import type { FacilityNpiInput, ProviderNpiInput } from './validation.ts';
 
+// Map a CTSS "provider_type" / NPPES taxonomy label to our facility_type
+// enum. The mapping is keyword-based because NPPES taxonomies are descriptive
+// strings, not codes — there are hundreds of variants but they cluster by a
+// handful of keywords. Anything that doesn't match falls through to 'other'.
+export function mapTaxonomyToFacilityType(
+  taxonomy: string | null,
+): 'asc' | 'hospital' | 'medical_center' | 'clinic' | 'other' {
+  if (!taxonomy) return 'other';
+  const t = taxonomy.toLowerCase();
+  // Order matters: "Surgical Hospital" should be 'hospital' not 'asc', and
+  // "Medical Center" should beat the generic 'clinic' fallback.
+  if (t.includes('hospital')) return 'hospital';
+  if (t.includes('medical center')) return 'medical_center';
+  if (t.includes('ambulatory surg') || t.includes('surgical center')) return 'asc';
+  if (
+    t.includes('clinic') ||
+    t.includes('group practice') ||
+    t.includes('practice') ||
+    t.includes('health center')
+  ) {
+    return 'clinic';
+  }
+  return 'other';
+}
+
 export async function upsertFacilityFromNpi(
   supabase: SupabaseLike,
   input: FacilityNpiInput,
@@ -54,15 +79,14 @@ export async function upsertFacilityFromNpi(
     }
   }
 
-  // 3) Insert a fresh row. CTSS doesn't reliably tell us the facility_type
-  //    enum value (asc/hospital/clinic/etc.) — fall back to 'other' for now;
-  //    a follow-up can map taxonomy codes when we wire the picker up.
+  // 3) Insert a fresh row, mapping CTSS taxonomy → facility_type enum.
+  const facilityType = mapTaxonomyToFacilityType(input.taxonomy_label);
   const { data: inserted, error: insErr } = await supabase
     .from('facilities')
     .insert({
       npi: input.npi,
       name: input.name,
-      facility_type: 'other',
+      facility_type: facilityType,
       city: input.city,
       state: input.state,
     })
