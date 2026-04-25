@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { FacilityPicker } from '../components/facility-picker';
+import { ProviderPicker } from '../components/provider-picker';
 import { type SubmitErrorCode, submitQuote } from '../lib/api';
-import type { Facility } from '../lib/facilities';
+import type { CtssOrganization, CtssProvider } from '../lib/ctss';
 
-type FormErrors = Partial<Record<'price' | 'year' | 'email' | 'facility' | 'form', string>>;
+type FormErrors = Partial<Record<'price' | 'year' | 'email' | 'pickone' | 'form', string>>;
 
 const CURRENT_YEAR = new Date().getUTCFullYear();
 
@@ -21,6 +22,10 @@ function errorMessage(code: SubmitErrorCode | 'unknown' | 'network'): string {
       return 'Tell us whether you had the procedure yet.';
     case 'unknown_facility':
       return 'Pick a facility from the suggestions list.';
+    case 'unknown_provider':
+      return 'Pick a provider from the suggestions list.';
+    case 'missing_provider_or_facility':
+      return 'Pick at least one of: provider or facility.';
     case 'rate_limited_email':
       return 'You have submitted too many times with this email today. Try again tomorrow.';
     case 'rate_limited_ip':
@@ -36,7 +41,8 @@ function errorMessage(code: SubmitErrorCode | 'unknown' | 'network'): string {
 }
 
 export function SubmitPage() {
-  const [facility, setFacility] = useState<Facility | null>(null);
+  const [facility, setFacility] = useState<CtssOrganization | null>(null);
+  const [provider, setProvider] = useState<CtssProvider | null>(null);
   const [price, setPrice] = useState('');
   const [year, setYear] = useState(String(CURRENT_YEAR));
   const [hadProcedure, setHadProcedure] = useState<'yes' | 'no' | null>(null);
@@ -47,7 +53,7 @@ export function SubmitPage() {
 
   function validate(): FormErrors {
     const next: FormErrors = {};
-    if (!facility) next.facility = 'Pick a facility.';
+    if (!facility && !provider) next.pickone = 'Pick at least one: provider or facility.';
 
     const priceNum = Number(price);
     if (!price || Number.isNaN(priceNum) || priceNum < 0.01 || priceNum > 99_999_999.99) {
@@ -72,14 +78,36 @@ export function SubmitPage() {
     const found = validate();
     setErrors(found);
     if (Object.keys(found).length > 0) return;
-
-    if (!facility || hadProcedure === null) return;
+    if (hadProcedure === null) return;
 
     setSubmitting(true);
     try {
       const result = await submitQuote({
         email: email.trim(),
-        facility_id: facility.id,
+        ...(facility
+          ? {
+              facility: {
+                npi: facility.npi,
+                name: facility.name,
+                city: facility.city,
+                state: facility.state,
+              },
+            }
+          : {}),
+        ...(provider
+          ? {
+              provider: {
+                npi: provider.npi,
+                first_name: provider.first_name,
+                last_name: provider.last_name,
+                credential: null,
+                practice_city: provider.practice_city,
+                practice_state: provider.practice_state,
+                taxonomy_code: null,
+                taxonomy_label: provider.taxonomy,
+              },
+            }
+          : {}),
         procedure_codes: ['64628'],
         quoted_price: Number(price),
         quote_year: Number(year),
@@ -122,15 +150,27 @@ export function SubmitPage() {
       </p>
 
       <form className="form" onSubmit={onSubmit} noValidate>
+        <p className="field__hint">
+          Pick at least one: the <strong>provider</strong> who quoted you, the{' '}
+          <strong>facility</strong> where the quote was given, or both. Most patients remember their
+          doctor's name; the facility (surgery center, hospital, clinic) is optional if you don't.
+        </p>
+
         <div className="field">
-          <label htmlFor="facility">Facility</label>
-          <FacilityPicker selected={facility} onSelect={setFacility} />
-          {errors.facility ? (
-            <p className="field__error" role="alert">
-              {errors.facility}
-            </p>
-          ) : null}
+          <label htmlFor="provider">Provider (physician)</label>
+          <ProviderPicker selected={provider} onSelect={setProvider} />
         </div>
+
+        <div className="field">
+          <label htmlFor="facility">Facility (surgery center, hospital, clinic)</label>
+          <FacilityPicker selected={facility} onSelect={setFacility} />
+        </div>
+
+        {errors.pickone ? (
+          <p className="field__error" role="alert">
+            {errors.pickone}
+          </p>
+        ) : null}
 
         <div className="field">
           <label htmlFor="price">Quoted price (USD)</label>
@@ -222,8 +262,8 @@ export function SubmitPage() {
         </div>
 
         <p className="submit-disclaimer">
-          By submitting, you confirm this price was quoted to you at the named facility. CostCompare
-          is not medical or financial advice.
+          By submitting, you confirm this price was quoted to you for the named provider and/or
+          facility. CostCompare is not medical or financial advice.
         </p>
 
         {errors.form ? (

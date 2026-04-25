@@ -9,13 +9,34 @@ export type SubmitErrorCode =
   | 'missing_had_procedure'
   | 'missing_ip'
   | 'unknown_facility'
+  | 'unknown_provider'
+  | 'missing_provider_or_facility'
   | 'rate_limited_email'
   | 'rate_limited_ip'
   | 'internal_error';
 
+export type SubmitFacilityNpi = {
+  npi: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+};
+
+export type SubmitProviderNpi = {
+  npi: string;
+  first_name: string;
+  last_name: string;
+  credential: string | null;
+  practice_city: string | null;
+  practice_state: string | null;
+  taxonomy_code: string | null;
+  taxonomy_label: string | null;
+};
+
 export type SubmitRequest = {
   email: string;
-  facility_id: string;
+  facility?: SubmitFacilityNpi;
+  provider?: SubmitProviderNpi;
   procedure_codes: string[];
   quoted_price: number;
   quote_year: number;

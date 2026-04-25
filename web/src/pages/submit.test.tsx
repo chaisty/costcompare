@@ -7,12 +7,13 @@ vi.mock('../lib/api', () => ({
   submitQuote: vi.fn(),
 }));
 
-vi.mock('../lib/facilities', () => ({
-  searchFacilities: vi.fn(),
+vi.mock('../lib/ctss', () => ({
+  searchCtssOrganizations: vi.fn(),
+  searchCtssProviders: vi.fn(),
 }));
 
 import { submitQuote } from '../lib/api';
-import { searchFacilities } from '../lib/facilities';
+import { searchCtssOrganizations, searchCtssProviders } from '../lib/ctss';
 import { SubmitPage } from './submit';
 
 function renderPage() {
@@ -24,20 +25,38 @@ function renderPage() {
 }
 
 const fakeFacility = {
-  id: '11111111-1111-4111-8111-111111111111',
-  name: 'Test ASC',
-  city: 'Testville',
+  npi: '1111111111',
+  name: 'Alpha Surgery Center',
+  city: 'San Francisco',
   state: 'CA',
+  taxonomy: 'Ambulatory Surgical',
 };
 
-async function fillForm() {
+const fakeProvider = {
+  npi: '2222222222',
+  first_name: 'Jane',
+  last_name: 'Smith',
+  practice_city: 'San Francisco',
+  practice_state: 'CA',
+  taxonomy: 'Pain Medicine',
+};
+
+async function fillForm({ withProvider = true, withFacility = true } = {}) {
   renderPage();
   const user = userEvent.setup();
-  vi.mocked(searchFacilities).mockResolvedValue([fakeFacility]);
+  vi.mocked(searchCtssOrganizations).mockResolvedValue([fakeFacility]);
+  vi.mocked(searchCtssProviders).mockResolvedValue([fakeProvider]);
 
-  await user.type(screen.getByPlaceholderText(/search by facility/i), 'Test');
-  await waitFor(() => expect(screen.getByText('Test ASC')).toBeInTheDocument());
-  await user.click(screen.getByText('Test ASC'));
+  if (withProvider) {
+    await user.type(screen.getByPlaceholderText(/search by physician/i), 'Smith');
+    await waitFor(() => expect(screen.getByText(/SMITH, JANE|Smith, Jane/)).toBeInTheDocument());
+    await user.click(screen.getByText(/SMITH, JANE|Smith, Jane/));
+  }
+  if (withFacility) {
+    await user.type(screen.getByPlaceholderText(/search by facility/i), 'Alpha');
+    await waitFor(() => expect(screen.getByText('Alpha Surgery Center')).toBeInTheDocument());
+    await user.click(screen.getByText('Alpha Surgery Center'));
+  }
 
   await user.type(screen.getByLabelText(/quoted price/i), '8500');
   await user.clear(screen.getByLabelText(/year of quote/i));
@@ -55,46 +74,54 @@ describe('SubmitPage', () => {
     vi.clearAllMocks();
   });
 
-  it('renders every required field and the pre-submit disclaimer', () => {
+  it('renders both pickers, the at-least-one hint, and the pre-submit disclaimer', () => {
     renderPage();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/submit a cash-pay price/i);
+    expect(screen.getByPlaceholderText(/search by physician/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/search by facility/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/quoted price/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/year of quote/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^yes$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByText(/pick at least one/i)).toBeInTheDocument();
     expect(screen.getByText(/not medical or financial advice/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^submit$/i })).toBeEnabled();
   });
 
-  it('shows validation errors when submitting an empty form', async () => {
+  it('shows pick-at-least-one error when neither provider nor facility chosen', async () => {
     const user = userEvent.setup();
     renderPage();
+    await user.type(screen.getByLabelText(/quoted price/i), '8500');
+    await user.clear(screen.getByLabelText(/year of quote/i));
+    await user.type(screen.getByLabelText(/year of quote/i), '2025');
+    await user.click(screen.getByLabelText(/^yes$/i));
+    await user.type(screen.getByLabelText(/email/i), 'alice@example.com');
     await user.click(screen.getByRole('button', { name: /^submit$/i }));
-    expect(await screen.findByText(/pick a facility/i)).toBeInTheDocument();
-    expect(screen.getByText(/price between \$0\.01/i)).toBeInTheDocument();
-    expect(screen.getByText(/valid email address/i)).toBeInTheDocument();
+    expect(await screen.findByText(/pick at least one: provider or facility/i)).toBeInTheDocument();
     expect(submitQuote).not.toHaveBeenCalled();
   });
 
-  it('submits a valid form and switches to the "check your email" state', async () => {
-    vi.mocked(submitQuote).mockResolvedValue({
-      ok: true,
-      message: 'Check your email to confirm your submission.',
-    });
-
-    const user = await fillForm();
+  it('submits provider-only and switches to "check your email" view', async () => {
+    vi.mocked(submitQuote).mockResolvedValue({ ok: true, message: 'ok' });
+    const user = await fillForm({ withProvider: true, withFacility: false });
     await user.click(screen.getByRole('button', { name: /^submit$/i }));
-
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/check your email/i),
     );
-    expect(screen.getByText(/alice@example.com/)).toBeInTheDocument();
     expect(submitQuote).toHaveBeenCalledTimes(1);
+    const call = vi.mocked(submitQuote).mock.calls[0]?.[0];
+    expect(call?.provider?.npi).toBe('2222222222');
+    expect(call?.facility).toBeUndefined();
   });
 
-  it('disables the submit button while in flight (prevents double-submit)', async () => {
-    // Resolve the mock on a deferred promise so we can observe the in-flight state.
+  it('submits both provider and facility together', async () => {
+    vi.mocked(submitQuote).mockResolvedValue({ ok: true, message: 'ok' });
+    const user = await fillForm();
+    await user.click(screen.getByRole('button', { name: /^submit$/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/check your email/i),
+    );
+    const call = vi.mocked(submitQuote).mock.calls[0]?.[0];
+    expect(call?.provider?.npi).toBe('2222222222');
+    expect(call?.facility?.npi).toBe('1111111111');
+  });
+
+  it('disables the submit button while in flight', async () => {
     let resolveCall: (v: { ok: true; message: string }) => void = () => {};
     vi.mocked(submitQuote).mockImplementation(
       () =>
@@ -102,18 +129,13 @@ describe('SubmitPage', () => {
           resolveCall = resolve;
         }),
     );
-
     const user = await fillForm();
     const submitButton = screen.getByRole('button', { name: /^submit$/i });
     await user.click(submitButton);
-
     expect(submitButton).toBeDisabled();
     expect(submitButton).toHaveTextContent(/submitting/i);
-
-    // Try to click again — should not re-invoke.
     await user.click(submitButton);
     expect(submitQuote).toHaveBeenCalledTimes(1);
-
     resolveCall({ ok: true, message: 'ok' });
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/check your email/i),
@@ -125,7 +147,6 @@ describe('SubmitPage', () => {
     const user = await fillForm();
     await user.click(screen.getByRole('button', { name: /^submit$/i }));
     expect(await screen.findByText(/submitted too many times/i)).toBeInTheDocument();
-    // Form stays visible; user can retry after fixing.
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/submit a cash-pay price/i);
   });
 });

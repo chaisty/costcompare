@@ -1,19 +1,19 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { type CtssOrganization, searchCtssOrganizations } from '../lib/ctss';
+import { type CtssProvider, searchCtssProviders } from '../lib/ctss';
 
 type Props = {
-  selected: CtssOrganization | null;
-  onSelect: (facility: CtssOrganization | null) => void;
+  selected: CtssProvider | null;
+  onSelect: (provider: CtssProvider | null) => void;
 };
 
-// CTSS-backed organization picker. Replaces the previous local-facilities
-// query because patients search by name, and CTSS returns the NPI-keyed
-// authoritative roster from NPPES. The Edge Function upserts the selected
-// facility into our local cache by NPI on submit.
-export function FacilityPicker({ selected, onSelect }: Props) {
+// CTSS-backed individual-provider picker. Same shape as FacilityPicker but
+// targets the NLM individuals endpoint. Search format is "Last name" (CTSS
+// indexes both first and last, but most patients remember the last name).
+export function ProviderPicker({ selected, onSelect }: Props) {
   const inputId = useId();
-  const [query, setQuery] = useState(selected?.name ?? '');
-  const [results, setResults] = useState<CtssOrganization[]>([]);
+  const initialName = selected ? `${selected.last_name}, ${selected.first_name}` : '';
+  const [query, setQuery] = useState(initialName);
+  const [results, setResults] = useState<CtssProvider[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,13 +21,11 @@ export function FacilityPicker({ selected, onSelect }: Props) {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (selected && query !== selected.name) onSelect(null);
+    if (selected && query !== `${selected.last_name}, ${selected.first_name}`) onSelect(null);
   }, [query, selected, onSelect]);
 
   useEffect(() => {
-    if (debounceRef.current !== null) {
-      window.clearTimeout(debounceRef.current);
-    }
+    if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
     abortRef.current?.abort();
     if (query.trim().length < 2) {
       setResults([]);
@@ -39,14 +37,14 @@ export function FacilityPicker({ selected, onSelect }: Props) {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       try {
-        const rows = await searchCtssOrganizations(query, ctrl.signal);
+        const rows = await searchCtssProviders(query, ctrl.signal);
         if (!ctrl.signal.aborted) {
           setResults(rows);
           setError(null);
         }
       } catch (e) {
         if (!(e instanceof DOMException && e.name === 'AbortError')) {
-          setError('Could not search facilities. Try again in a moment.');
+          setError('Could not search providers. Try again in a moment.');
           setResults([]);
         }
       } finally {
@@ -59,9 +57,9 @@ export function FacilityPicker({ selected, onSelect }: Props) {
     };
   }, [query]);
 
-  function onPick(o: CtssOrganization) {
-    onSelect(o);
-    setQuery(o.name);
+  function onPick(p: CtssProvider) {
+    onSelect(p);
+    setQuery(`${p.last_name}, ${p.first_name}`);
     setOpen(false);
   }
 
@@ -69,10 +67,10 @@ export function FacilityPicker({ selected, onSelect }: Props) {
     <div className="facility-picker">
       <input
         id={inputId}
-        name="facility"
+        name="provider"
         type="text"
         autoComplete="off"
-        placeholder="Search by facility name…"
+        placeholder="Search by physician name (last name)…"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -96,18 +94,20 @@ export function FacilityPicker({ selected, onSelect }: Props) {
           ) : results.length === 0 ? (
             <li className="facility-picker__status">No matches.</li>
           ) : (
-            results.map((o) => (
-              <li key={o.npi} className="facility-picker__option">
+            results.map((p) => (
+              <li key={p.npi} className="facility-picker__option">
                 <button
                   type="button"
                   className="facility-picker__option-button"
-                  aria-pressed={selected?.npi === o.npi}
+                  aria-pressed={selected?.npi === p.npi}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => onPick(o)}
+                  onClick={() => onPick(p)}
                 >
-                  <span className="facility-picker__name">{o.name}</span>
+                  <span className="facility-picker__name">
+                    {p.last_name}, {p.first_name}
+                  </span>
                   <span className="facility-picker__meta">
-                    {[o.city, o.state, o.taxonomy].filter(Boolean).join(' · ')}
+                    {[p.practice_city, p.practice_state, p.taxonomy].filter(Boolean).join(' · ')}
                   </span>
                 </button>
               </li>

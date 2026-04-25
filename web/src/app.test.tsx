@@ -11,7 +11,10 @@ vi.mock('./lib/api', () => ({
     .fn()
     .mockResolvedValue({ ok: true, results: [], limit: 50, offset: 0, has_more: false }),
 }));
-vi.mock('./lib/facilities', () => ({ searchFacilities: vi.fn().mockResolvedValue([]) }));
+vi.mock('./lib/ctss', () => ({
+  searchCtssOrganizations: vi.fn().mockResolvedValue([]),
+  searchCtssProviders: vi.fn().mockResolvedValue([]),
+}));
 
 import { App } from './app';
 
