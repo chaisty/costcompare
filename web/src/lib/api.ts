@@ -95,6 +95,11 @@ export type SearchedRate = {
   facility_id: string | null;
   facility_name: string | null;
   facility_state: string | null;
+  provider_id: string | null;
+  provider_name: string | null;
+  provider_credential: string | null;
+  provider_specialty: string | null;
+  provider_state: string | null;
   locality: string | null;
   payer: string | null;
   plan_variant: string | null;

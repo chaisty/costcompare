@@ -174,10 +174,24 @@ function RateRow({ rate }: { rate: SearchedRate }) {
     <li className="rate-row">
       <div className="rate-row__price">{price}</div>
       <div className="rate-row__meta">
+        {rate.provider_name ? (
+          <div className="rate-row__provider">
+            {rate.provider_name}
+            {rate.provider_credential ? (
+              <span className="rate-row__credential">, {rate.provider_credential}</span>
+            ) : null}
+            {rate.provider_specialty ? (
+              <span className="rate-row__specialty"> · {rate.provider_specialty}</span>
+            ) : null}
+          </div>
+        ) : null}
         <div className="rate-row__facility">
-          {rate.facility_name ?? 'National (no specific facility)'}
-          {rate.facility_state ? (
+          {rate.facility_name ?? (rate.provider_name ? null : 'National (no specific facility)')}
+          {rate.facility_name && rate.facility_state ? (
             <span className="rate-row__state">({rate.facility_state})</span>
+          ) : null}
+          {!rate.facility_name && rate.provider_state ? (
+            <span className="rate-row__state">{rate.provider_state}</span>
           ) : null}
         </div>
         <div className="rate-row__provenance">

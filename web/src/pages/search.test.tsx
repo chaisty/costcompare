@@ -26,6 +26,11 @@ const medicareRow = {
   facility_id: null,
   facility_name: null,
   facility_state: null,
+  provider_id: null,
+  provider_name: null,
+  provider_credential: null,
+  provider_specialty: null,
+  provider_state: null,
   locality: 'NATIONAL-UNADJUSTED',
   payer: null,
   plan_variant: null,
@@ -42,6 +47,32 @@ const cashRow = {
   facility_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   facility_name: 'Alpha Surgical Center',
   facility_state: 'CA',
+  provider_id: null,
+  provider_name: null,
+  provider_credential: null,
+  provider_specialty: null,
+  provider_state: null,
+  locality: null,
+  payer: null,
+  plan_variant: null,
+  source_url: null,
+  source_fetched_at: null,
+  confidence_note: null,
+};
+
+const cashProviderRow = {
+  rate_type: 'cash' as const,
+  price: 7500.0,
+  rate_year: 2025,
+  procedure_codes: ['64628'],
+  facility_id: null,
+  facility_name: null,
+  facility_state: null,
+  provider_id: 'pppppppp-pppp-pppp-pppp-pppppppppppp',
+  provider_name: 'Jane Smith',
+  provider_credential: 'MD',
+  provider_specialty: 'Pain Medicine',
+  provider_state: 'CA',
   locality: null,
   payer: null,
   plan_variant: null,
@@ -127,6 +158,21 @@ describe('SearchPage', () => {
     expect(within(item).getByText(/^\(CA\)$/)).toBeInTheDocument();
     expect(within(item).getByText(/user-submitted/i)).toBeInTheDocument();
     expect(within(item).getByRole('link', { name: /report this submission/i })).toBeInTheDocument();
+  });
+
+  it('renders provider name + specialty for a provider-only cash row', async () => {
+    vi.mocked(searchRates).mockResolvedValue({
+      ok: true,
+      results: [cashProviderRow],
+      limit: 50,
+      offset: 0,
+      has_more: false,
+    });
+    renderPage();
+    const list = await screen.findByRole('list', { name: /search results/i });
+    expect(within(list).getByText(/jane smith/i)).toBeInTheDocument();
+    expect(within(list).getByText(/MD/)).toBeInTheDocument();
+    expect(within(list).getByText(/pain medicine/i)).toBeInTheDocument();
   });
 
   it('never renders email addresses or source_submission_id in the DOM', async () => {

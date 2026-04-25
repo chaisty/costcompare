@@ -345,8 +345,24 @@ body {
   gap: 4px;
 }
 
+.rate-row__provider {
+  font-weight: 600;
+}
+
+.rate-row__credential,
+.rate-row__specialty {
+  font-weight: 400;
+  color: var(--muted);
+}
+
 .rate-row__facility {
   font-weight: 600;
+}
+
+.rate-row__provider + .rate-row__facility {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .rate-row__state {
