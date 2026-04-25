@@ -395,8 +395,8 @@ function errorCopy(code: string): string {
       return 'Invalid year range.';
     case 'invalid_procedure_code':
       return 'Invalid procedure code.';
-    case 'offset_too_large':
-      return 'Too many pages requested. Try narrowing the filter.';
+    case 'invalid_cursor':
+      return 'Pagination link is invalid or expired. Reload to start over.';
     default:
       return 'Something went wrong on our side. Try again shortly.';
   }
