@@ -26,6 +26,7 @@ const medicareRow = {
   facility_id: null,
   facility_name: null,
   facility_state: null,
+  facility_external_id: null,
   provider_id: null,
   provider_name: null,
   provider_credential: null,
@@ -47,6 +48,7 @@ const cashRow = {
   facility_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   facility_name: 'Alpha Surgical Center',
   facility_state: 'CA',
+  facility_external_id: '12-3456',
   provider_id: null,
   provider_name: null,
   provider_credential: null,
@@ -68,6 +70,7 @@ const cashProviderRow = {
   facility_id: null,
   facility_name: null,
   facility_state: null,
+  facility_external_id: null,
   provider_id: 'pppppppp-pppp-pppp-pppp-pppppppppppp',
   provider_name: 'Jane Smith',
   provider_credential: 'MD',
@@ -158,6 +161,32 @@ describe('SearchPage', () => {
     expect(within(item).getByText(/^\(CA\)$/)).toBeInTheDocument();
     expect(within(item).getByText(/user-submitted/i)).toBeInTheDocument();
     expect(within(item).getByRole('link', { name: /report this submission/i })).toBeInTheDocument();
+  });
+
+  it('renders the Medicare-certified badge when facility_external_id is set', async () => {
+    vi.mocked(searchRates).mockResolvedValue({
+      ok: true,
+      results: [cashRow],
+      limit: 50,
+      offset: 0,
+      has_more: false,
+    });
+    renderPage();
+    const list = await screen.findByRole('list', { name: /search results/i });
+    expect(within(list).getByText(/medicare-certified/i)).toBeInTheDocument();
+  });
+
+  it('does not render the Medicare-certified badge when facility_external_id is null', async () => {
+    vi.mocked(searchRates).mockResolvedValue({
+      ok: true,
+      results: [cashProviderRow],
+      limit: 50,
+      offset: 0,
+      has_more: false,
+    });
+    renderPage();
+    await screen.findByRole('list', { name: /search results/i });
+    expect(screen.queryByText(/medicare-certified/i)).not.toBeInTheDocument();
   });
 
   it('renders provider name + specialty for a provider-only cash row', async () => {

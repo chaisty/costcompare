@@ -96,6 +96,7 @@ export type SearchedRate = {
   facility_id: string | null;
   facility_name: string | null;
   facility_state: string | null;
+  facility_external_id: string | null;
   provider_id: string | null;
   provider_name: string | null;
   provider_credential: string | null;

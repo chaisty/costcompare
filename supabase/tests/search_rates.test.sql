@@ -142,7 +142,7 @@ select is(
     (select array_agg(k order by k)
      from jsonb_object_keys((search_rates()->'results')->0) as k),
     array[
-        'confidence_note', 'facility_id', 'facility_name', 'facility_state',
+        'confidence_note', 'facility_external_id', 'facility_id', 'facility_name', 'facility_state',
         'locality', 'payer', 'plan_variant', 'price', 'procedure_codes',
         'provider_credential', 'provider_id', 'provider_name', 'provider_specialty',
         'provider_state', 'rate_type', 'rate_year', 'source_fetched_at', 'source_url'

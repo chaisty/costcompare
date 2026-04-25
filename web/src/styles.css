@@ -423,3 +423,12 @@ body {
   background: color-mix(in srgb, #b54708 15%, var(--bg));
   border-color: color-mix(in srgb, #b54708 40%, var(--border));
 }
+
+.badge--certified {
+  margin-left: 6px;
+  font-size: 11px;
+  background: color-mix(in srgb, #137d5a 12%, var(--bg));
+  border-color: color-mix(in srgb, #137d5a 35%, var(--border));
+  color: color-mix(in srgb, #137d5a 80%, var(--fg));
+  cursor: help;
+}
