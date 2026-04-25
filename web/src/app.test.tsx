@@ -4,7 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 // Stub downstream modules so App's render chain doesn't touch supabase env
 // or trigger real network calls during the smoke test.
 vi.mock('./lib/supabase', () => ({ supabase: {} }));
-vi.mock('./lib/api', () => ({ submitQuote: vi.fn(), confirmSubmission: vi.fn() }));
+vi.mock('./lib/api', () => ({
+  submitQuote: vi.fn(),
+  confirmSubmission: vi.fn(),
+  searchRates: vi
+    .fn()
+    .mockResolvedValue({ ok: true, results: [], limit: 50, offset: 0, has_more: false }),
+}));
 vi.mock('./lib/facilities', () => ({ searchFacilities: vi.fn().mockResolvedValue([]) }));
 
 import { App } from './app';

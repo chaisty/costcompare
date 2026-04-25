@@ -58,6 +58,87 @@ export type ConfirmErrorCode = 'invalid_token' | 'already_confirmed' | 'rejected
 
 export type ConfirmResult = { ok: true } | { ok: false; error: ConfirmErrorCode };
 
+// ---------------------------------------------------------------------------
+// search_rates RPC. Called from the public SearchPage. Returned shape mirrors
+// the jsonb allowlist in the migration — keep this in sync if the migration
+// changes. (No `id` by design; no `source_submission_id`; no `email`.)
+// ---------------------------------------------------------------------------
+
+export type RateType = 'cash' | 'medicare' | 'negotiated';
+
+export type SearchedRate = {
+  rate_type: RateType;
+  price: number | string;
+  rate_year: number;
+  procedure_codes: string[];
+  facility_id: string | null;
+  facility_name: string | null;
+  facility_state: string | null;
+  locality: string | null;
+  payer: string | null;
+  plan_variant: string | null;
+  source_url: string | null;
+  source_fetched_at: string | null;
+  confidence_note: string | null;
+};
+
+export type SearchRatesOptions = {
+  procedure_code?: string;
+  state?: string;
+  rate_type?: RateType;
+  year_from?: number;
+  year_to?: number;
+  limit?: number;
+  offset?: number;
+};
+
+export type SearchRatesResult = {
+  ok: true;
+  results: SearchedRate[];
+  limit: number;
+  offset: number;
+  has_more: boolean;
+};
+
+export type SearchRatesError = { ok: false; error: string };
+
+export async function searchRates(
+  opts: SearchRatesOptions = {},
+): Promise<SearchRatesResult | SearchRatesError> {
+  const params: Record<string, unknown> = {};
+  if (opts.procedure_code) params.p_procedure_code = opts.procedure_code;
+  if (opts.state) params.p_state = opts.state;
+  if (opts.rate_type) params.p_rate_type = opts.rate_type;
+  if (opts.year_from !== undefined) params.p_year_from = opts.year_from;
+  if (opts.year_to !== undefined) params.p_year_to = opts.year_to;
+  if (opts.limit !== undefined) params.p_limit = opts.limit;
+  if (opts.offset !== undefined) params.p_offset = opts.offset;
+
+  const { data, error } = await supabase.rpc('search_rates', params);
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || !('ok' in data)) {
+    throw new Error('Unexpected search_rates payload');
+  }
+  const d = data as {
+    ok: boolean;
+    results?: SearchedRate[];
+    limit?: number;
+    offset?: number;
+    has_more?: boolean;
+    error?: string;
+  };
+  if (d.ok) {
+    return {
+      ok: true,
+      results: d.results ?? [],
+      limit: d.limit ?? 50,
+      offset: d.offset ?? 0,
+      has_more: Boolean(d.has_more),
+    };
+  }
+  return { ok: false, error: d.error ?? 'unknown' };
+}
+
 export async function confirmSubmission(token: string): Promise<ConfirmResult> {
   const { data, error } = await supabase.rpc('confirm_submission', { p_token: token });
   if (error) {

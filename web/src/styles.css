@@ -281,3 +281,129 @@ body {
   color: var(--muted);
   font-size: 13px;
 }
+
+.site-header__nav {
+  display: flex;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.site-header__link {
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 6px 0;
+  border-bottom: 2px solid transparent;
+}
+
+.site-header__link.active {
+  border-bottom-color: var(--accent);
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.filters select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+.rate-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rate-row {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  gap: 24px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.rate-row__price {
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.rate-row__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rate-row__facility {
+  font-weight: 600;
+}
+
+.rate-row__state {
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.rate-row__provenance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.rate-row__source {
+  font-size: 13px;
+}
+
+.rate-row__caveat {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  background: color-mix(in srgb, #e2a100 12%, var(--bg));
+  color: color-mix(in srgb, #805a00 70%, var(--fg));
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.rate-row__report {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  background: var(--bg);
+}
+
+.badge--cash {
+  background: color-mix(in srgb, var(--accent) 15%, var(--bg));
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.badge--medicare {
+  background: color-mix(in srgb, #137d5a 15%, var(--bg));
+  border-color: color-mix(in srgb, #137d5a 40%, var(--border));
+}
+
+.badge--negotiated {
+  background: color-mix(in srgb, #b54708 15%, var(--bg));
+  border-color: color-mix(in srgb, #b54708 40%, var(--border));
+}
