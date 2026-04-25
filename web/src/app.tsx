@@ -1,23 +1,30 @@
+import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { Footer } from './components/layout/footer';
 import { Header } from './components/layout/header';
+import { ConfirmPage } from './pages/confirm';
+import { SubmitPage } from './pages/submit';
 
-export function App() {
+function Layout() {
   return (
     <div className="app">
       <Header />
       <main className="app__main">
-        <section className="placeholder">
-          <h1>CostCompare</h1>
-          <p>
-            A patient-submitted database of cash-pay prices for medical procedures, alongside
-            Medicare rates for context.
-          </p>
-          <p className="placeholder__status">
-            Submission and search features are coming online in upcoming issues.
-          </p>
-        </section>
+        <Outlet />
       </main>
       <Footer />
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<SubmitPage />} />
+          <Route path="confirm" element={<ConfirmPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }

@@ -1,12 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-// Stub the supabase module so App's import chain doesn't throw on missing env.
+// Stub downstream modules so App's render chain doesn't touch supabase env
+// or trigger real network calls during the smoke test.
 vi.mock('./lib/supabase', () => ({ supabase: {} }));
+vi.mock('./lib/api', () => ({ submitQuote: vi.fn(), confirmSubmission: vi.fn() }));
+vi.mock('./lib/facilities', () => ({ searchFacilities: vi.fn().mockResolvedValue([]) }));
 
 import { App } from './app';
 
-describe('App placeholder', () => {
+describe('App shell', () => {
   it('renders the brand in the header', () => {
     render(<App />);
     expect(screen.getAllByText(/CostCompare/i).length).toBeGreaterThan(0);
