@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../lib/api', () => ({
   submitQuote: vi.fn(),
+  resendConfirmation: vi.fn(),
 }));
 
 vi.mock('../lib/ctss', () => ({
@@ -12,7 +13,7 @@ vi.mock('../lib/ctss', () => ({
   searchCtssProviders: vi.fn(),
 }));
 
-import { submitQuote } from '../lib/api';
+import { resendConfirmation, submitQuote } from '../lib/api';
 import { searchCtssOrganizations, searchCtssProviders } from '../lib/ctss';
 import { SubmitPage } from './submit';
 
@@ -148,5 +149,40 @@ describe('SubmitPage', () => {
     await user.click(screen.getByRole('button', { name: /^submit$/i }));
     expect(await screen.findByText(/submitted too many times/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/submit a cash-pay price/i);
+  });
+
+  it('shows a Resend the link button on the check-your-email view and switches to "Sent" on success', async () => {
+    vi.mocked(submitQuote).mockResolvedValue({ ok: true, message: 'ok' });
+    vi.mocked(resendConfirmation).mockResolvedValue({ ok: true, message: 'vague-ok' });
+    const user = await fillForm();
+    await user.click(screen.getByRole('button', { name: /^submit$/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/check your email/i),
+    );
+
+    const resendButton = screen.getByRole('button', { name: /resend the link/i });
+    expect(resendButton).toBeEnabled();
+    await user.click(resendButton);
+    expect(resendConfirmation).toHaveBeenCalledWith('alice@example.com');
+    await waitFor(() => expect(screen.getByText(/sent\. check your inbox/i)).toBeInTheDocument());
+  });
+
+  it('surfaces resend_limit_exceeded as a readable error', async () => {
+    vi.mocked(submitQuote).mockResolvedValue({ ok: true, message: 'ok' });
+    vi.mocked(resendConfirmation).mockResolvedValue({
+      ok: false,
+      error: 'resend_limit_exceeded',
+    });
+    const user = await fillForm();
+    await user.click(screen.getByRole('button', { name: /^submit$/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/check your email/i),
+    );
+    await user.click(screen.getByRole('button', { name: /resend the link/i }));
+    expect(
+      await screen.findByText(/resent the confirmation link too many times/i),
+    ).toBeInTheDocument();
+    // Resend button still visible (user can submit fresh) — error doesn't hide it.
+    expect(screen.getByRole('button', { name: /resend the link/i })).toBeEnabled();
   });
 });

@@ -76,6 +76,47 @@ export async function submitQuote(input: SubmitRequest): Promise<SubmitResult> {
   return { ok: false, error: 'unknown' };
 }
 
+// ---------------------------------------------------------------------------
+// resend-confirmation Edge Function. Always returns a vague success message;
+// the response shape does NOT distinguish "we resent" from "no pending
+// submission for that email" — that's the privacy posture.
+// ---------------------------------------------------------------------------
+
+export type ResendErrorCode =
+  | 'invalid_email'
+  | 'invalid_body'
+  | 'resend_limit_exceeded'
+  | 'internal_error';
+
+export type ResendResult =
+  | { ok: true; message: string }
+  | { ok: false; error: ResendErrorCode | 'unknown' };
+
+export async function resendConfirmation(email: string): Promise<ResendResult> {
+  const { data, error } = await supabase.functions.invoke('resend-confirmation', {
+    body: { email },
+  });
+  if (error) {
+    const response = (error as { context?: { response?: Response } }).context?.response;
+    if (response) {
+      const parsed = (await response.json().catch(() => null)) as {
+        ok: false;
+        error?: string;
+      } | null;
+      if (parsed && parsed.ok === false && parsed.error) {
+        return { ok: false, error: parsed.error as ResendErrorCode };
+      }
+    }
+    return { ok: false, error: 'unknown' };
+  }
+  if (data && typeof data === 'object' && 'ok' in data) {
+    const d = data as { ok: boolean; message?: string; error?: string };
+    if (d.ok) return { ok: true, message: d.message ?? '' };
+    return { ok: false, error: (d.error ?? 'unknown') as ResendErrorCode };
+  }
+  return { ok: false, error: 'unknown' };
+}
+
 export type ConfirmErrorCode = 'invalid_token' | 'already_confirmed' | 'rejected' | 'token_expired';
 
 export type ConfirmResult = { ok: true } | { ok: false; error: ConfirmErrorCode };

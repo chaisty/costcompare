@@ -7,6 +7,7 @@ vi.mock('./lib/supabase', () => ({ supabase: {} }));
 vi.mock('./lib/api', () => ({
   submitQuote: vi.fn(),
   confirmSubmission: vi.fn(),
+  resendConfirmation: vi.fn(),
   searchRates: vi
     .fn()
     .mockResolvedValue({ ok: true, results: [], limit: 50, offset: 0, has_more: false }),

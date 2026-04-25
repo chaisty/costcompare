@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { FacilityPicker } from '../components/facility-picker';
 import { ProviderPicker } from '../components/provider-picker';
-import { type SubmitErrorCode, submitQuote } from '../lib/api';
+import {
+  type ResendErrorCode,
+  type SubmitErrorCode,
+  resendConfirmation,
+  submitQuote,
+} from '../lib/api';
 import type { CtssOrganization, CtssProvider } from '../lib/ctss';
 
 type FormErrors = Partial<Record<'price' | 'year' | 'email' | 'pickone' | 'form', string>>;
@@ -40,6 +45,21 @@ function errorMessage(code: SubmitErrorCode | 'unknown' | 'network'): string {
   }
 }
 
+function resendErrorMessage(code: ResendErrorCode | 'unknown' | 'network'): string {
+  switch (code) {
+    case 'invalid_email':
+      return 'That email address looks invalid.';
+    case 'resend_limit_exceeded':
+      return 'You have resent the confirmation link too many times. Please submit again to start fresh.';
+    case 'invalid_body':
+    case 'internal_error':
+    case 'unknown':
+      return 'Something went wrong on our side. Please try again in a few minutes.';
+    case 'network':
+      return 'Could not reach CostCompare. Check your connection and try again.';
+  }
+}
+
 export function SubmitPage() {
   const [facility, setFacility] = useState<CtssOrganization | null>(null);
   const [provider, setProvider] = useState<CtssProvider | null>(null);
@@ -50,6 +70,8 @@ export function SubmitPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [resendState, setResendState] = useState<'idle' | 'pending' | 'sent' | 'error'>('idle');
+  const [resendError, setResendError] = useState<string | null>(null);
 
   function validate(): FormErrors {
     const next: FormErrors = {};
@@ -126,6 +148,24 @@ export function SubmitPage() {
     }
   }
 
+  async function onResend() {
+    if (resendState === 'pending' || resendState === 'sent') return;
+    setResendState('pending');
+    setResendError(null);
+    try {
+      const result = await resendConfirmation(email.trim());
+      if (result.ok) {
+        setResendState('sent');
+      } else {
+        setResendState('error');
+        setResendError(resendErrorMessage(result.error));
+      }
+    } catch {
+      setResendState('error');
+      setResendError(resendErrorMessage('network'));
+    }
+  }
+
   if (submitted) {
     return (
       <section className="card" aria-live="polite">
@@ -138,6 +178,28 @@ export function SubmitPage() {
           If you don't see it, check your spam folder. The link expires automatically; if that
           happens, you can submit again.
         </p>
+        {resendState === 'sent' ? (
+          <p className="muted" aria-live="polite">
+            Sent. Check your inbox and spam folder.
+          </p>
+        ) : (
+          <p className="muted">
+            Didn't get it?{' '}
+            <button
+              type="button"
+              className="button-link"
+              onClick={onResend}
+              disabled={resendState === 'pending'}
+            >
+              {resendState === 'pending' ? 'Resending…' : 'Resend the link'}
+            </button>
+          </p>
+        )}
+        {resendState === 'error' && resendError ? (
+          <p className="form__error" role="alert">
+            {resendError}
+          </p>
+        ) : null}
       </section>
     );
   }
