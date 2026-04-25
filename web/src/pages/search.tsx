@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { type SearchRatesResult, type SearchedRate, searchRates } from '../lib/api';
 
+// UTC-pinned date formatter so the rendered "fetched <date>" string doesn't
+// shift across timezones — source_fetched_at is recorded in UTC and a viewer
+// in (say) UTC-12 would otherwise see the date a day earlier.
+const utcDateFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'UTC',
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+});
+
 const US_STATES = [
   'AL',
   'AK',
@@ -216,7 +226,7 @@ function RateRow({ rate }: { rate: SearchedRate }) {
             {rate.source_fetched_at ? (
               <span className="muted">
                 {' '}
-                fetched {new Date(rate.source_fetched_at).toLocaleDateString()}
+                fetched {utcDateFormatter.format(new Date(rate.source_fetched_at))}
               </span>
             ) : null}
           </div>
