@@ -16,6 +16,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { parseSubmissionRequest } from './validation.ts';
 import { buildConfirmationUrl, type EmailSender, selectEmailSender } from './email.ts';
+import { upsertFacilityFromNpi, upsertProviderFromNpi } from './upsert.ts';
 
 type RpcResult =
   | { ok: true; submission_id: string; token: string }
@@ -135,10 +136,30 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // If the caller supplied an NPI-shape facility/provider, upsert into our
+  // local cache tables and resolve to UUID. Errors here are unexpected (the
+  // input is already validated); surface as internal_error.
+  let resolvedFacilityId = parsed.data.facility_id;
+  let resolvedProviderId = parsed.data.provider_id;
+  try {
+    if (parsed.data.facility) {
+      resolvedFacilityId = await upsertFacilityFromNpi(supabase, parsed.data.facility);
+    }
+    if (parsed.data.provider) {
+      resolvedProviderId = await upsertProviderFromNpi(supabase, parsed.data.provider);
+    }
+  } catch (err) {
+    console.error(
+      '[submit] NPI upsert failed:',
+      err instanceof Error ? err.message : String(err),
+    );
+    return json(500, { ok: false, error: 'internal_error' }, origin);
+  }
+
   const { data, error } = await supabase.rpc('submit_quote', {
     p_email: parsed.data.email,
-    p_facility_id: parsed.data.facility_id,
-    p_provider_id: parsed.data.provider_id,
+    p_facility_id: resolvedFacilityId,
+    p_provider_id: resolvedProviderId,
     p_procedure_codes: parsed.data.procedure_codes,
     p_quoted_price: parsed.data.quoted_price,
     p_quote_year: parsed.data.quote_year,

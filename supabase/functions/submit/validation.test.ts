@@ -203,3 +203,109 @@ Deno.test('parseSubmissionRequest: null facility_id + null provider_id both reje
   const r = parseSubmissionRequest({ ...validBody, facility_id: null, provider_id: null });
   assertEquals(r, { ok: false, error: 'missing_provider_or_facility' });
 });
+
+// ---------------------------------------------------------------------------
+// NPI-shape input (CTSS-sourced facility / provider).
+// ---------------------------------------------------------------------------
+
+const validFacilityNpiBody = {
+  email: 'a@example.com',
+  facility: {
+    npi: '1234567890',
+    name: 'Alpha Surgery Center',
+    city: 'San Francisco',
+    state: 'CA',
+  },
+  procedure_codes: ['64628'],
+  quoted_price: 8500,
+  quote_year: 2025,
+  had_procedure: true,
+};
+
+const validProviderNpiBody = {
+  email: 'a@example.com',
+  provider: {
+    npi: '0987654321',
+    first_name: 'Jane',
+    last_name: 'Smith',
+    credential: 'MD',
+    practice_state: 'CA',
+  },
+  procedure_codes: ['64628'],
+  quoted_price: 8500,
+  quote_year: 2025,
+  had_procedure: true,
+};
+
+Deno.test('parseSubmissionRequest: accepts facility NPI shape', () => {
+  const r = parseSubmissionRequest(validFacilityNpiBody);
+  assertEquals(r.ok, true);
+  if (r.ok) {
+    assertEquals(r.data.facility?.npi, '1234567890');
+    assertEquals(r.data.facility?.state, 'CA');
+    assertEquals(r.data.facility_id, null);
+  }
+});
+
+Deno.test('parseSubmissionRequest: accepts provider NPI shape', () => {
+  const r = parseSubmissionRequest(validProviderNpiBody);
+  assertEquals(r.ok, true);
+  if (r.ok) {
+    assertEquals(r.data.provider?.npi, '0987654321');
+    assertEquals(r.data.provider?.last_name, 'Smith');
+    assertEquals(r.data.provider_id, null);
+  }
+});
+
+Deno.test('parseSubmissionRequest: rejects 9-digit NPI (must be 10 digits)', () => {
+  const r = parseSubmissionRequest({
+    ...validFacilityNpiBody,
+    facility: { ...validFacilityNpiBody.facility, npi: '123456789' },
+  });
+  assertEquals(r, { ok: false, error: 'unknown_facility' });
+});
+
+Deno.test('parseSubmissionRequest: rejects facility shape with empty name', () => {
+  const r = parseSubmissionRequest({
+    ...validFacilityNpiBody,
+    facility: { ...validFacilityNpiBody.facility, name: '' },
+  });
+  assertEquals(r, { ok: false, error: 'unknown_facility' });
+});
+
+Deno.test('parseSubmissionRequest: rejects mixing facility_id UUID with facility NPI object', () => {
+  const r = parseSubmissionRequest({
+    ...validFacilityNpiBody,
+    facility_id: '11111111-1111-4111-8111-111111111111',
+  });
+  assertEquals(r, { ok: false, error: 'invalid_body' });
+});
+
+Deno.test('parseSubmissionRequest: lowercase state is upper-cased', () => {
+  const r = parseSubmissionRequest({
+    ...validFacilityNpiBody,
+    facility: { ...validFacilityNpiBody.facility, state: 'ca' },
+  });
+  assertEquals(r.ok, true);
+  if (r.ok) assertEquals(r.data.facility?.state, 'CA');
+});
+
+Deno.test('parseSubmissionRequest: facility NPI + provider NPI together is allowed', () => {
+  const r = parseSubmissionRequest({
+    ...validFacilityNpiBody,
+    provider: validProviderNpiBody.provider,
+  });
+  assertEquals(r.ok, true);
+  if (r.ok) {
+    assertEquals(r.data.facility?.npi, '1234567890');
+    assertEquals(r.data.provider?.npi, '0987654321');
+  }
+});
+
+Deno.test('parseSubmissionRequest: rejects provider shape missing last_name', () => {
+  const r = parseSubmissionRequest({
+    ...validProviderNpiBody,
+    provider: { ...validProviderNpiBody.provider, last_name: '' },
+  });
+  assertEquals(r, { ok: false, error: 'unknown_provider' });
+});
