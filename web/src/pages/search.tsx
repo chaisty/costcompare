@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { type SearchRatesResult, type SearchedRate, searchRates } from '../lib/api';
+import {
+  type RateType,
+  type SearchRatesOptions,
+  type SearchRatesResult,
+  type SearchedRate,
+  searchRates,
+} from '../lib/api';
 
 // UTC-pinned date formatter so the rendered "fetched <date>" string doesn't
 // shift across timezones — source_fetched_at is recorded in UTC and a viewer
@@ -10,6 +16,12 @@ const utcDateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'numeric',
   day: 'numeric',
 });
+
+// Year dropdown: current year + 5 prior. The RPC accepts any year in
+// [2000, 2100], but most cash-pay submissions are recent, so a short list
+// keeps the UI usable without a date picker.
+const CURRENT_YEAR = new Date().getUTCFullYear();
+const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => CURRENT_YEAR - i);
 
 const US_STATES = [
   'AL',
@@ -73,6 +85,8 @@ type Status =
 
 export function SearchPage() {
   const [state, setState] = useState<string>('');
+  const [rateType, setRateType] = useState<'' | RateType>('');
+  const [year, setYear] = useState<string>('');
   const [status, setStatus] = useState<Status>({ kind: 'loading' });
 
   useEffect(() => {
@@ -80,7 +94,15 @@ export function SearchPage() {
     setStatus({ kind: 'loading' });
     (async () => {
       try {
-        const result = await searchRates({ state: state || undefined });
+        const opts: SearchRatesOptions = {};
+        if (state) opts.state = state;
+        if (rateType) opts.rate_type = rateType;
+        if (year) {
+          const y = Number(year);
+          opts.year_from = y;
+          opts.year_to = y;
+        }
+        const result = await searchRates(opts);
         if (cancelled) return;
         if (result.ok) {
           setStatus({ kind: 'loaded', result });
@@ -95,7 +117,7 @@ export function SearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [state]);
+  }, [state, rateType, year]);
 
   return (
     <section>
@@ -106,22 +128,57 @@ export function SearchPage() {
       </p>
 
       <div className="filters">
-        <label htmlFor="state-filter">Filter by state</label>
-        <select
-          id="state-filter"
-          name="state"
-          value={state}
-          onChange={(e) => setState(e.target.value)}
-        >
-          <option value="">All states</option>
-          {US_STATES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+        <div className="filters__group">
+          <label htmlFor="state-filter">State</label>
+          <select
+            id="state-filter"
+            name="state"
+            value={state}
+            onChange={(e) => setState(e.target.value)}
+          >
+            <option value="">All states</option>
+            {US_STATES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filters__group">
+          <label htmlFor="rate-type-filter">Source</label>
+          <select
+            id="rate-type-filter"
+            name="rate_type"
+            value={rateType}
+            onChange={(e) => setRateType(e.target.value as '' | RateType)}
+          >
+            <option value="">All sources</option>
+            <option value="cash">User-submitted</option>
+            <option value="medicare">Medicare</option>
+            <option value="negotiated">Negotiated</option>
+          </select>
+        </div>
+
+        <div className="filters__group">
+          <label htmlFor="year-filter">Year</label>
+          <select
+            id="year-filter"
+            name="year"
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+          >
+            <option value="">All years</option>
+            {YEAR_OPTIONS.map((y) => (
+              <option key={y} value={String(y)}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <span className="filter-hint muted">
-          Matches the facility's state or the provider's practice state.
+          State matches the facility's state or the provider's practice state.
         </span>
       </div>
 

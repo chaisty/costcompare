@@ -235,7 +235,73 @@ describe('SearchPage', () => {
     vi.mocked(searchRates).mockClear();
 
     const user = userEvent.setup();
-    await user.selectOptions(screen.getByLabelText(/filter by state/i), 'CA');
+    await user.selectOptions(screen.getByLabelText(/^state$/i), 'CA');
     await waitFor(() => expect(searchRates).toHaveBeenCalledWith({ state: 'CA' }));
+  });
+
+  it('calls searchRates with the selected rate_type when "Source" filter changes', async () => {
+    vi.mocked(searchRates).mockResolvedValue({
+      ok: true,
+      results: [],
+      limit: 50,
+      offset: 0,
+      has_more: false,
+    });
+    renderPage();
+    await waitFor(() => expect(searchRates).toHaveBeenCalled());
+    vi.mocked(searchRates).mockClear();
+
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText(/^source$/i), 'medicare');
+    await waitFor(() => expect(searchRates).toHaveBeenCalledWith({ rate_type: 'medicare' }));
+  });
+
+  it('passes year_from and year_to as the same year when "Year" filter is set', async () => {
+    vi.mocked(searchRates).mockResolvedValue({
+      ok: true,
+      results: [],
+      limit: 50,
+      offset: 0,
+      has_more: false,
+    });
+    renderPage();
+    await waitFor(() => expect(searchRates).toHaveBeenCalled());
+    vi.mocked(searchRates).mockClear();
+
+    const user = userEvent.setup();
+    const yearSelect = screen.getByLabelText(/^year$/i);
+    const firstYear = Number((yearSelect as HTMLSelectElement).options[1]?.value ?? '0');
+    await user.selectOptions(yearSelect, String(firstYear));
+    await waitFor(() =>
+      expect(searchRates).toHaveBeenCalledWith({ year_from: firstYear, year_to: firstYear }),
+    );
+  });
+
+  it('combines all three filters into a single searchRates call', async () => {
+    vi.mocked(searchRates).mockResolvedValue({
+      ok: true,
+      results: [],
+      limit: 50,
+      offset: 0,
+      has_more: false,
+    });
+    renderPage();
+    await waitFor(() => expect(searchRates).toHaveBeenCalled());
+
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText(/^state$/i), 'CA');
+    await user.selectOptions(screen.getByLabelText(/^source$/i), 'cash');
+    const yearSelect = screen.getByLabelText(/^year$/i);
+    const firstYear = Number((yearSelect as HTMLSelectElement).options[1]?.value ?? '0');
+    await user.selectOptions(yearSelect, String(firstYear));
+
+    await waitFor(() =>
+      expect(searchRates).toHaveBeenLastCalledWith({
+        state: 'CA',
+        rate_type: 'cash',
+        year_from: firstYear,
+        year_to: firstYear,
+      }),
+    );
   });
 });

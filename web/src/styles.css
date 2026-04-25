@@ -317,14 +317,21 @@ body {
 
 .filters {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 12px 16px;
   margin: 24px 0;
+}
+
+.filters__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .filter-hint {
   font-size: 12px;
-  margin-left: 4px;
+  flex-basis: 100%;
 }
 
 .filters select {
