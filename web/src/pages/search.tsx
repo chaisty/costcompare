@@ -1,11 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  type RateType,
-  type SearchRatesOptions,
-  type SearchRatesResult,
-  type SearchedRate,
-  searchRates,
-} from '../lib/api';
+import { type RateType, type SearchRatesOptions, type SearchedRate, searchRates } from '../lib/api';
 
 // UTC-pinned date formatter so the rendered "fetched <date>" string doesn't
 // shift across timezones — source_fetched_at is recorded in UTC and a viewer
@@ -77,11 +71,36 @@ const US_STATES = [
   'DC',
 ];
 
+type LoadedState = {
+  rows: SearchedRate[];
+  nextCursor: string | null;
+  hasMore: boolean;
+};
+
 type Status =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'loaded'; result: SearchRatesResult }
+  | { kind: 'loaded'; state: LoadedState }
+  | { kind: 'loading-more'; state: LoadedState }
   | { kind: 'error'; message: string };
+
+function buildOptions(
+  state: string,
+  rateType: '' | RateType,
+  year: string,
+  afterCursor?: string,
+): SearchRatesOptions {
+  const opts: SearchRatesOptions = {};
+  if (state) opts.state = state;
+  if (rateType) opts.rate_type = rateType;
+  if (year) {
+    const y = Number(year);
+    opts.year_from = y;
+    opts.year_to = y;
+  }
+  if (afterCursor) opts.after_cursor = afterCursor;
+  return opts;
+}
 
 export function SearchPage() {
   const [state, setState] = useState<string>('');
@@ -94,18 +113,17 @@ export function SearchPage() {
     setStatus({ kind: 'loading' });
     (async () => {
       try {
-        const opts: SearchRatesOptions = {};
-        if (state) opts.state = state;
-        if (rateType) opts.rate_type = rateType;
-        if (year) {
-          const y = Number(year);
-          opts.year_from = y;
-          opts.year_to = y;
-        }
-        const result = await searchRates(opts);
+        const result = await searchRates(buildOptions(state, rateType, year));
         if (cancelled) return;
         if (result.ok) {
-          setStatus({ kind: 'loaded', result });
+          setStatus({
+            kind: 'loaded',
+            state: {
+              rows: result.results,
+              nextCursor: result.next_cursor,
+              hasMore: result.has_more,
+            },
+          });
         } else {
           setStatus({ kind: 'error', message: errorCopy(result.error) });
         }
@@ -118,6 +136,31 @@ export function SearchPage() {
       cancelled = true;
     };
   }, [state, rateType, year]);
+
+  async function loadMore() {
+    if (status.kind !== 'loaded' || !status.state.nextCursor) return;
+    const current = status.state;
+    setStatus({ kind: 'loading-more', state: current });
+    try {
+      const result = await searchRates(
+        buildOptions(state, rateType, year, current.nextCursor ?? undefined),
+      );
+      if (result.ok) {
+        setStatus({
+          kind: 'loaded',
+          state: {
+            rows: [...current.rows, ...result.results],
+            nextCursor: result.next_cursor,
+            hasMore: result.has_more,
+          },
+        });
+      } else {
+        setStatus({ kind: 'error', message: errorCopy(result.error) });
+      }
+    } catch {
+      setStatus({ kind: 'error', message: 'Could not reach CostCompare. Try again shortly.' });
+    }
+  }
 
   return (
     <section>
@@ -182,12 +225,18 @@ export function SearchPage() {
         </span>
       </div>
 
-      <ResultsPanel status={status} />
+      <ResultsPanel status={status} onLoadMore={loadMore} />
     </section>
   );
 }
 
-function ResultsPanel({ status }: { status: Status }) {
+function ResultsPanel({
+  status,
+  onLoadMore,
+}: {
+  status: Status;
+  onLoadMore: () => void;
+}) {
   if (status.kind === 'loading') {
     return (
       <p className="muted" aria-live="polite">
@@ -204,8 +253,8 @@ function ResultsPanel({ status }: { status: Status }) {
   }
   if (status.kind === 'idle') return null;
 
-  const rows = status.result.results;
-  if (rows.length === 0) {
+  const loaded = status.state;
+  if (loaded.rows.length === 0) {
     return (
       <p className="muted">
         No rates yet for this filter. Be the first — <a href="/submit">submit a price</a>.
@@ -213,17 +262,20 @@ function ResultsPanel({ status }: { status: Status }) {
     );
   }
 
+  const isLoadingMore = status.kind === 'loading-more';
+
   return (
     <>
       <ul className="rate-list" aria-label="Search results">
-        {rows.map((rate, i) => (
+        {loaded.rows.map((rate, i) => (
           <RateRow key={rateKey(rate, i)} rate={rate} />
         ))}
       </ul>
-      {status.result.has_more ? (
-        <p className="muted">
-          More results available. Narrow your filter to see fewer rows, or pagination is coming in a
-          future update.
+      {loaded.hasMore ? (
+        <p className="rate-list__more">
+          <button type="button" className="button" onClick={onLoadMore} disabled={isLoadingMore}>
+            {isLoadingMore ? 'Loading…' : 'Load more'}
+          </button>
         </p>
       ) : null}
     </>

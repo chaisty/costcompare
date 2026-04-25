@@ -352,6 +352,11 @@ body {
   gap: 12px;
 }
 
+.rate-list__more {
+  margin: 16px 0 0;
+  text-align: center;
+}
+
 .rate-row {
   display: grid;
   grid-template-columns: minmax(120px, auto) 1fr;

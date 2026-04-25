@@ -1,4 +1,4 @@
--- Tests for the search_rates RPC (issue #4).
+-- Tests for the search_rates RPC (issue #4 + keyset pagination follow-up).
 -- Run via: npx supabase test db
 -- These are kept in a separate file from schema_rls.test.sql so the tests for
 -- each issue stay independent and cheap to reason about.
@@ -7,7 +7,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(28);
+select plan(38);
 
 -- ---------------------------------------------------------------------------
 -- Fixtures. Use deterministic UUIDs so assertions can reference rows by id.
@@ -58,7 +58,7 @@ select confirm_submission((select payload->>'token' from _seed_submission));
 select ok(
     has_function_privilege(
         'anon',
-        'public.search_rates(text, text, rate_type, int, int, int, int)',
+        'public.search_rates(text, text, rate_type, int, int, int, text)',
         'EXECUTE'
     ),
     'anon has EXECUTE on search_rates'
@@ -130,6 +130,17 @@ select ok(
 );
 
 -- ---------------------------------------------------------------------------
+-- search_token must NOT leak in result rows. It's an internal pagination
+-- handle that round-trips opaquely via next_cursor; bare exposure would
+-- defeat the point of having a separate token from rates.id.
+-- ---------------------------------------------------------------------------
+
+select ok(
+    not (search_rates()->'results')::text ~* '"search_token"',
+    'search_rates result rows do not expose search_token'
+);
+
+-- ---------------------------------------------------------------------------
 -- Column allowlist: result rows must expose exactly these keys and no others.
 -- Stronger than the regex-based no-email-leak tests above — if a future schema
 -- change adds a column (even a non-email one like `notes`) and someone wires
@@ -147,7 +158,7 @@ select is(
         'provider_credential', 'provider_id', 'provider_name', 'provider_specialty',
         'provider_state', 'rate_type', 'rate_year', 'source_fetched_at', 'source_url'
     ]::text[],
-    'result rows expose exactly the expected column allowlist (no id, no source_submission_id, no email)'
+    'result rows expose exactly the expected column allowlist (no id, no source_submission_id, no email, no search_token)'
 );
 
 -- ---------------------------------------------------------------------------
@@ -221,7 +232,7 @@ select is(
 );
 
 -- ---------------------------------------------------------------------------
--- Pagination: limit clamped, offset bounded.
+-- Pagination: limit clamped, has_more flag, next_cursor handshake.
 -- ---------------------------------------------------------------------------
 
 select is(
@@ -234,12 +245,6 @@ select is(
     (search_rates(p_limit => 0)->>'limit')::int,
     1,
     'limit < 1 is clamped to 1'
-);
-
-select is(
-    (search_rates(p_offset => 10001)->>'error')::text,
-    'offset_too_large',
-    'offset > 10000 rejected'
 );
 
 -- With limit=1, only one row returned.
@@ -261,6 +266,104 @@ select is(
     (search_rates()->>'has_more')::boolean,
     false,
     'has_more=false when the page covers all matches'
+);
+
+-- next_cursor present (non-null) when has_more is true.
+select isnt(
+    search_rates(p_limit => 1)->'next_cursor',
+    'null'::jsonb,
+    'next_cursor is non-null when has_more is true'
+);
+
+-- next_cursor null when has_more is false.
+select is(
+    search_rates()->'next_cursor',
+    'null'::jsonb,
+    'next_cursor is null when has_more is false'
+);
+
+-- ---------------------------------------------------------------------------
+-- Cursor round-trip: page 1 + page 2 covers all rows once each. Tightest
+-- guarantee that the cursor is the right shape for the WHERE clause.
+-- ---------------------------------------------------------------------------
+
+select is(
+    (
+        select array_agg(price order by price)::numeric[]
+        from (
+            select (r->>'price')::numeric as price
+            from jsonb_array_elements(search_rates(p_limit => 1)->'results') r
+            union all
+            select (r->>'price')::numeric as price
+            from jsonb_array_elements(
+                search_rates(
+                    p_limit => 1,
+                    p_after_cursor => search_rates(p_limit => 1)->>'next_cursor'
+                )->'results'
+            ) r
+        ) p
+    ),
+    array[8500.00, 9891.33]::numeric[],
+    'cursor round-trip: page1 + page2 yields both fixture rows in price order'
+);
+
+-- A cursor pointing past every row returns no results and has_more=false.
+-- Defends the "stale cursor that survives a page-2 walk-off" case.
+select is(
+    jsonb_array_length(
+        search_rates(
+            p_after_cursor => encode(
+                convert_to(
+                    jsonb_build_object('p', '99999999.99', 't', 'zzzzzzzzzzzz')::text,
+                    'utf8'
+                ),
+                'base64'
+            )
+        )->'results'
+    ),
+    0,
+    'cursor past all rows returns empty results'
+);
+
+-- ---------------------------------------------------------------------------
+-- Cursor validation: malformed cursors are rejected with a stable error code.
+-- ---------------------------------------------------------------------------
+
+select is(
+    (search_rates(p_after_cursor => 'not-base64!@#')->>'error')::text,
+    'invalid_cursor',
+    'malformed-base64 cursor rejected'
+);
+
+select is(
+    (search_rates(p_after_cursor => 'aGVsbG8=')->>'error')::text,
+    'invalid_cursor',
+    'cursor whose decoded payload is not JSON rejected (base64 of "hello")'
+);
+
+select is(
+    (search_rates(p_after_cursor => encode(convert_to('{"p":"abc","t":"x"}', 'utf8'), 'base64'))->>'error')::text,
+    'invalid_cursor',
+    'cursor with non-numeric "p" rejected'
+);
+
+select is(
+    (search_rates(p_after_cursor => encode(convert_to('{"p":"100"}', 'utf8'), 'base64'))->>'error')::text,
+    'invalid_cursor',
+    'cursor missing "t" field rejected'
+);
+
+select is(
+    (search_rates(p_after_cursor => repeat('A', 250))->>'error')::text,
+    'invalid_cursor',
+    'overlong cursor (>200 chars) rejected without attempting to decode'
+);
+
+-- Empty-string cursor is treated as no-cursor (defaults).
+select is(
+    jsonb_array_length(search_rates(p_after_cursor => '')->'results'),
+    jsonb_array_length(search_rates()->'results'),
+    'empty-string cursor treated as no-cursor'
 );
 
 -- ---------------------------------------------------------------------------

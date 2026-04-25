@@ -99,7 +99,7 @@ describe('SearchPage', () => {
     );
     renderPage();
     expect(screen.getByText(/loading rates/i)).toBeInTheDocument();
-    resolve({ ok: true, results: [], limit: 50, offset: 0, has_more: false });
+    resolve({ ok: true, results: [], limit: 50, has_more: false, next_cursor: null });
     await waitFor(() => expect(screen.queryByText(/loading rates/i)).not.toBeInTheDocument());
   });
 
@@ -108,8 +108,8 @@ describe('SearchPage', () => {
       ok: true,
       results: [],
       limit: 50,
-      offset: 0,
       has_more: false,
+      next_cursor: null,
     });
     renderPage();
     expect(await screen.findByText(/no rates yet/i)).toBeInTheDocument();
@@ -130,8 +130,8 @@ describe('SearchPage', () => {
       ok: true,
       results: [medicareRow],
       limit: 50,
-      offset: 0,
       has_more: false,
+      next_cursor: null,
     });
     renderPage();
     const list = await screen.findByRole('list', { name: /search results/i });
@@ -150,8 +150,8 @@ describe('SearchPage', () => {
       ok: true,
       results: [cashRow],
       limit: 50,
-      offset: 0,
       has_more: false,
+      next_cursor: null,
     });
     renderPage();
     const list = await screen.findByRole('list', { name: /search results/i });
@@ -168,8 +168,8 @@ describe('SearchPage', () => {
       ok: true,
       results: [cashRow],
       limit: 50,
-      offset: 0,
       has_more: false,
+      next_cursor: null,
     });
     renderPage();
     const list = await screen.findByRole('list', { name: /search results/i });
@@ -181,8 +181,8 @@ describe('SearchPage', () => {
       ok: true,
       results: [cashProviderRow],
       limit: 50,
-      offset: 0,
       has_more: false,
+      next_cursor: null,
     });
     renderPage();
     await screen.findByRole('list', { name: /search results/i });
@@ -194,8 +194,8 @@ describe('SearchPage', () => {
       ok: true,
       results: [cashProviderRow],
       limit: 50,
-      offset: 0,
       has_more: false,
+      next_cursor: null,
     });
     renderPage();
     const list = await screen.findByRole('list', { name: /search results/i });
@@ -209,8 +209,8 @@ describe('SearchPage', () => {
       ok: true,
       results: [medicareRow, cashRow],
       limit: 50,
-      offset: 0,
       has_more: false,
+      next_cursor: null,
     });
     const { container } = renderPage();
     await screen.findByRole('list', { name: /search results/i });
@@ -227,8 +227,8 @@ describe('SearchPage', () => {
       ok: true,
       results: [],
       limit: 50,
-      offset: 0,
       has_more: false,
+      next_cursor: null,
     });
     renderPage();
     await waitFor(() => expect(searchRates).toHaveBeenCalled());
@@ -244,8 +244,8 @@ describe('SearchPage', () => {
       ok: true,
       results: [],
       limit: 50,
-      offset: 0,
       has_more: false,
+      next_cursor: null,
     });
     renderPage();
     await waitFor(() => expect(searchRates).toHaveBeenCalled());
@@ -261,8 +261,8 @@ describe('SearchPage', () => {
       ok: true,
       results: [],
       limit: 50,
-      offset: 0,
       has_more: false,
+      next_cursor: null,
     });
     renderPage();
     await waitFor(() => expect(searchRates).toHaveBeenCalled());
@@ -282,8 +282,8 @@ describe('SearchPage', () => {
       ok: true,
       results: [],
       limit: 50,
-      offset: 0,
       has_more: false,
+      next_cursor: null,
     });
     renderPage();
     await waitFor(() => expect(searchRates).toHaveBeenCalled());
@@ -303,5 +303,52 @@ describe('SearchPage', () => {
         year_to: firstYear,
       }),
     );
+  });
+
+  it('shows a Load more button when has_more is true and appends the next page on click', async () => {
+    vi.mocked(searchRates).mockResolvedValueOnce({
+      ok: true,
+      results: [medicareRow],
+      limit: 1,
+      has_more: true,
+      next_cursor: 'cursor-page-2',
+    });
+    vi.mocked(searchRates).mockResolvedValueOnce({
+      ok: true,
+      results: [cashRow],
+      limit: 1,
+      has_more: false,
+      next_cursor: null,
+    });
+    renderPage();
+
+    const loadMore = await screen.findByRole('button', { name: /load more/i });
+    expect(loadMore).toBeEnabled();
+    expect(screen.getByText(/^\$9,891\.33$/)).toBeInTheDocument();
+    expect(screen.queryByText(/^\$8,500\.00$/)).not.toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(loadMore);
+
+    await waitFor(() => expect(searchRates).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(searchRates).mock.calls[1]?.[0]).toEqual({ after_cursor: 'cursor-page-2' });
+
+    // Both rows now visible; Load more button gone since has_more=false on page 2.
+    await waitFor(() => expect(screen.getByText(/^\$8,500\.00$/)).toBeInTheDocument());
+    expect(screen.getByText(/^\$9,891\.33$/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
+  });
+
+  it('does not show a Load more button when has_more is false', async () => {
+    vi.mocked(searchRates).mockResolvedValue({
+      ok: true,
+      results: [medicareRow],
+      limit: 50,
+      has_more: false,
+      next_cursor: null,
+    });
+    renderPage();
+    await screen.findByRole('list', { name: /search results/i });
+    expect(screen.queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
   });
 });

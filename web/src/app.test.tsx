@@ -10,7 +10,7 @@ vi.mock('./lib/api', () => ({
   resendConfirmation: vi.fn(),
   searchRates: vi
     .fn()
-    .mockResolvedValue({ ok: true, results: [], limit: 50, offset: 0, has_more: false }),
+    .mockResolvedValue({ ok: true, results: [], limit: 50, has_more: false, next_cursor: null }),
 }));
 vi.mock('./lib/ctss', () => ({
   searchCtssOrganizations: vi.fn().mockResolvedValue([]),

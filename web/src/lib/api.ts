@@ -158,15 +158,15 @@ export type SearchRatesOptions = {
   year_from?: number;
   year_to?: number;
   limit?: number;
-  offset?: number;
+  after_cursor?: string;
 };
 
 export type SearchRatesResult = {
   ok: true;
   results: SearchedRate[];
   limit: number;
-  offset: number;
   has_more: boolean;
+  next_cursor: string | null;
 };
 
 export type SearchRatesError = { ok: false; error: string };
@@ -181,7 +181,7 @@ export async function searchRates(
   if (opts.year_from !== undefined) params.p_year_from = opts.year_from;
   if (opts.year_to !== undefined) params.p_year_to = opts.year_to;
   if (opts.limit !== undefined) params.p_limit = opts.limit;
-  if (opts.offset !== undefined) params.p_offset = opts.offset;
+  if (opts.after_cursor) params.p_after_cursor = opts.after_cursor;
 
   const { data, error } = await supabase.rpc('search_rates', params);
   if (error) throw error;
@@ -192,7 +192,7 @@ export async function searchRates(
     ok: boolean;
     results?: SearchedRate[];
     limit?: number;
-    offset?: number;
+    next_cursor?: string | null;
     has_more?: boolean;
     error?: string;
   };
@@ -201,8 +201,8 @@ export async function searchRates(
       ok: true,
       results: d.results ?? [],
       limit: d.limit ?? 50,
-      offset: d.offset ?? 0,
       has_more: Boolean(d.has_more),
+      next_cursor: d.next_cursor ?? null,
     };
   }
   return { ok: false, error: d.error ?? 'unknown' };
