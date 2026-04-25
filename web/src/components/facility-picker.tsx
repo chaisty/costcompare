@@ -56,6 +56,9 @@ export function FacilityPicker({ selected, onSelect }: Props) {
 
     return () => {
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+      // Abort any in-flight CTSS fetch so a stale response can't update state
+      // after the component unmounts or the query changes.
+      abortRef.current?.abort();
     };
   }, [query]);
 

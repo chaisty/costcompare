@@ -114,7 +114,10 @@ export function parseSubmissionRequest(body: unknown): ParseResult {
     return { ok: false, error: 'invalid_email' };
   }
 
-  // Facility: either UUID (legacy) or NPI object (new). Both is invalid.
+  // Facility: either UUID (legacy) or NPI object (new), but not both shapes
+  // for the same axis. (A UUID-form facility + an NPI-form provider, or vice
+  // versa, is allowed — the cross-axis combination is what `at-least-one`
+  // permits.)
   let facility_id: string | null = null;
   let facility: FacilityNpiInput | null = null;
   if (b.facility_id !== undefined && b.facility_id !== null) {

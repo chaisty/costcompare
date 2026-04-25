@@ -209,9 +209,9 @@ function RateRow({ rate }: { rate: SearchedRate }) {
           {rate.facility_external_id ? (
             <span
               className="badge badge--certified"
-              title="This facility appears in the CMS Provider of Services file (Medicare-enrolled)."
+              title="This facility appears in the CMS Provider of Services file. Active enrollment status may vary."
             >
-              Medicare-certified
+              Medicare-listed
             </span>
           ) : null}
         </div>

@@ -7,7 +7,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(20);
+select plan(21);
 
 -- ---------------------------------------------------------------------------
 -- Schema assertions: providers table + nullability + CHECK constraints.
@@ -203,6 +203,14 @@ select is(
     jsonb_array_length(search_rates(p_state => 'CA')->'results'),
     1,
     'state=CA matches provider-only rate via practice_state'
+);
+
+-- Negative case: state=NY should exclude the CA-only rate (covers the
+-- "rows with neither side matching are excluded" branch in the OR clause).
+select is(
+    jsonb_array_length(search_rates(p_state => 'NY')->'results'),
+    0,
+    'state=NY excludes rates whose facility/provider are not in NY'
 );
 
 -- ---------------------------------------------------------------------------

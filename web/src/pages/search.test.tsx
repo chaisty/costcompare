@@ -163,7 +163,7 @@ describe('SearchPage', () => {
     expect(within(item).getByRole('link', { name: /report this submission/i })).toBeInTheDocument();
   });
 
-  it('renders the Medicare-certified badge when facility_external_id is set', async () => {
+  it('renders the Medicare-listed badge when facility_external_id is set', async () => {
     vi.mocked(searchRates).mockResolvedValue({
       ok: true,
       results: [cashRow],
@@ -173,10 +173,10 @@ describe('SearchPage', () => {
     });
     renderPage();
     const list = await screen.findByRole('list', { name: /search results/i });
-    expect(within(list).getByText(/medicare-certified/i)).toBeInTheDocument();
+    expect(within(list).getByText(/medicare-listed/i)).toBeInTheDocument();
   });
 
-  it('does not render the Medicare-certified badge when facility_external_id is null', async () => {
+  it('does not render the Medicare-listed badge when facility_external_id is null', async () => {
     vi.mocked(searchRates).mockResolvedValue({
       ok: true,
       results: [cashProviderRow],
@@ -186,7 +186,7 @@ describe('SearchPage', () => {
     });
     renderPage();
     await screen.findByRole('list', { name: /search results/i });
-    expect(screen.queryByText(/medicare-certified/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/medicare-listed/i)).not.toBeInTheDocument();
   });
 
   it('renders provider name + specialty for a provider-only cash row', async () => {

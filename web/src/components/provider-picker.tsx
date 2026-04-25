@@ -54,6 +54,7 @@ export function ProviderPicker({ selected, onSelect }: Props) {
 
     return () => {
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
     };
   }, [query]);
 

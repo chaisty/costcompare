@@ -67,9 +67,6 @@ jobs:
 
       - name: Start local Supabase stack
         run: supabase start
-        env:
-          # Quiet Supabase telemetry in CI.
-          SUPABASE_DEBUG: '0'
 
       - name: Run pgTAP suite
         run: supabase test db
