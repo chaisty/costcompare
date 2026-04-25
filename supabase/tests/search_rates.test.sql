@@ -144,7 +144,8 @@ select is(
     array[
         'confidence_note', 'facility_id', 'facility_name', 'facility_state',
         'locality', 'payer', 'plan_variant', 'price', 'procedure_codes',
-        'rate_type', 'rate_year', 'source_fetched_at', 'source_url'
+        'provider_credential', 'provider_id', 'provider_name', 'provider_specialty',
+        'provider_state', 'rate_type', 'rate_year', 'source_fetched_at', 'source_url'
     ]::text[],
     'result rows expose exactly the expected column allowlist (no id, no source_submission_id, no email)'
 );

@@ -10,6 +10,15 @@ const validBody = {
   had_procedure: true,
 };
 
+const validProviderBody = {
+  email: 'a@example.com',
+  provider_id: '22222222-2222-4222-8222-222222222222',
+  procedure_codes: ['64628'],
+  quoted_price: 8500,
+  quote_year: 2025,
+  had_procedure: true,
+};
+
 Deno.test('parseSubmissionRequest: accepts well-formed body', () => {
   const r = parseSubmissionRequest(validBody);
   assertEquals(r.ok, true);
@@ -151,4 +160,46 @@ Deno.test('parseSubmissionRequest: accepts had_procedure=false', () => {
   const r = parseSubmissionRequest({ ...validBody, had_procedure: false });
   assertEquals(r.ok, true);
   if (r.ok) assertEquals(r.data.had_procedure, false);
+});
+
+Deno.test('parseSubmissionRequest: accepts a provider-only submission (no facility)', () => {
+  const r = parseSubmissionRequest(validProviderBody);
+  assertEquals(r.ok, true);
+  if (r.ok) {
+    assertEquals(r.data.facility_id, null);
+    assertEquals(r.data.provider_id, '22222222-2222-4222-8222-222222222222');
+  }
+});
+
+Deno.test('parseSubmissionRequest: accepts both facility and provider', () => {
+  const r = parseSubmissionRequest({
+    ...validBody,
+    provider_id: '22222222-2222-4222-8222-222222222222',
+  });
+  assertEquals(r.ok, true);
+  if (r.ok) {
+    assertEquals(r.data.facility_id, '11111111-1111-4111-8111-111111111111');
+    assertEquals(r.data.provider_id, '22222222-2222-4222-8222-222222222222');
+  }
+});
+
+Deno.test('parseSubmissionRequest: rejects missing both facility and provider', () => {
+  const { facility_id: _omit, ...rest } = validBody;
+  const r = parseSubmissionRequest(rest);
+  assertEquals(r, { ok: false, error: 'missing_provider_or_facility' });
+});
+
+Deno.test('parseSubmissionRequest: rejects malformed provider_id', () => {
+  const r = parseSubmissionRequest({ ...validBody, provider_id: 'not-a-uuid' });
+  assertEquals(r, { ok: false, error: 'unknown_provider' });
+});
+
+Deno.test('parseSubmissionRequest: rejects non-string provider_id', () => {
+  const r = parseSubmissionRequest({ ...validBody, provider_id: 42 });
+  assertEquals(r, { ok: false, error: 'unknown_provider' });
+});
+
+Deno.test('parseSubmissionRequest: null facility_id + null provider_id both rejected together', () => {
+  const r = parseSubmissionRequest({ ...validBody, facility_id: null, provider_id: null });
+  assertEquals(r, { ok: false, error: 'missing_provider_or_facility' });
 });

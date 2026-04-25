@@ -138,6 +138,7 @@ Deno.serve(async (req) => {
   const { data, error } = await supabase.rpc('submit_quote', {
     p_email: parsed.data.email,
     p_facility_id: parsed.data.facility_id,
+    p_provider_id: parsed.data.provider_id,
     p_procedure_codes: parsed.data.procedure_codes,
     p_quoted_price: parsed.data.quoted_price,
     p_quote_year: parsed.data.quote_year,

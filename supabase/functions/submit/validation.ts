@@ -1,10 +1,11 @@
 // Structural (type-level) validation of the incoming JSON body. Semantic
-// validation (email format, price/year ranges, facility existence) is owned
-// by the submit_quote RPC — do not duplicate it here.
+// validation (email format, price/year ranges, facility/provider existence)
+// is owned by the submit_quote RPC — do not duplicate it here.
 
 export type SubmissionInput = {
   email: string;
-  facility_id: string;
+  facility_id: string | null;
+  provider_id: string | null;
   procedure_codes: string[];
   quoted_price: number;
   quote_year: number;
@@ -26,11 +27,35 @@ export function parseSubmissionRequest(body: unknown): ParseResult {
   if (typeof b.email !== 'string' || b.email.length === 0 || b.email.length > 254) {
     return { ok: false, error: 'invalid_email' };
   }
-  if (typeof b.facility_id !== 'string' || !UUID_PATTERN.test(b.facility_id)) {
-    // Malformed UUID and unknown-but-valid UUID collapse to one client-facing
-    // code. From the submitter's perspective, both mean "pick a valid facility."
-    return { ok: false, error: 'unknown_facility' };
+
+  // facility_id is now optional (either a valid UUID string or null/absent).
+  // Malformed UUIDs and unknown-but-valid UUIDs collapse to `unknown_facility`
+  // at the edge; from the submitter's perspective both mean "pick a facility
+  // from the list, it didn't match anything on the server."
+  let facility_id: string | null = null;
+  if (b.facility_id !== undefined && b.facility_id !== null) {
+    if (typeof b.facility_id !== 'string' || !UUID_PATTERN.test(b.facility_id)) {
+      return { ok: false, error: 'unknown_facility' };
+    }
+    facility_id = b.facility_id;
   }
+
+  // provider_id is also optional. Same malformed-UUID → `unknown_provider`
+  // collapse as for facility.
+  let provider_id: string | null = null;
+  if (b.provider_id !== undefined && b.provider_id !== null) {
+    if (typeof b.provider_id !== 'string' || !UUID_PATTERN.test(b.provider_id)) {
+      return { ok: false, error: 'unknown_provider' };
+    }
+    provider_id = b.provider_id;
+  }
+
+  // At-least-one is a structural check so the RPC never has to reject a
+  // payload that's missing both. RPC enforces it as a second line of defense.
+  if (facility_id === null && provider_id === null) {
+    return { ok: false, error: 'missing_provider_or_facility' };
+  }
+
   if (
     !Array.isArray(b.procedure_codes) ||
     b.procedure_codes.length === 0 ||
@@ -68,7 +93,8 @@ export function parseSubmissionRequest(body: unknown): ParseResult {
     ok: true,
     data: {
       email: b.email,
-      facility_id: b.facility_id,
+      facility_id,
+      provider_id,
       procedure_codes: b.procedure_codes as string[],
       quoted_price: b.quoted_price,
       quote_year: b.quote_year,

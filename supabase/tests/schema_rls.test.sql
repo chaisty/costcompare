@@ -213,7 +213,7 @@ reset role;
 select ok(
     not has_function_privilege(
         'anon',
-        'public.submit_quote(text, uuid, text[], numeric, int, boolean, inet)',
+        'public.submit_quote(text, uuid, text[], numeric, int, boolean, inet, uuid)',
         'EXECUTE'
     ),
     'anon lacks EXECUTE on submit_quote'
