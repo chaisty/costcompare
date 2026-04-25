@@ -102,7 +102,7 @@ export function SearchPage() {
       <h1>Cash-pay prices for CPT 64628 (Intracept)</h1>
       <p className="muted">
         Compare user-submitted cash-pay prices alongside Medicare rates. Each row shows its source
-        and year. Cash-pay prices are not verified by the listed facility.
+        and year. Cash-pay prices are not verified by the listed provider or facility.
       </p>
 
       <div className="filters">
@@ -120,6 +120,9 @@ export function SearchPage() {
             </option>
           ))}
         </select>
+        <span className="filter-hint muted">
+          Matches the facility's state or the provider's practice state.
+        </span>
       </div>
 
       <ResultsPanel status={status} />
