@@ -8,6 +8,7 @@
     "etl": "tsx src/cli.ts all",
     "etl:facilities": "tsx src/cli.ts facilities",
     "etl:rates": "tsx src/cli.ts rates",
+    "etl:nppes": "tsx src/cli.ts nppes",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "biome check src",

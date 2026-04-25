@@ -43,3 +43,27 @@ export const UPSERT_BATCH_SIZE = 500;
 // introduce per-CBSA rates with different locality strings; keeping this as a
 // constant rather than an empty string makes the intent obvious in queries.
 export const NATIONAL_UNADJUSTED_LOCALITY = 'NATIONAL-UNADJUSTED';
+
+// NPPES Type-2 backfill: taxonomy codes we accept and how each maps to our
+// facility_type enum. Filter is intentionally narrow — these are the
+// organization types likely to perform CPT 64628 (Intracept) or other
+// procedure-relevant cash-pay work. Add codes as more procedures come online.
+//
+// Codes are NUCC Healthcare Provider Taxonomy v22.x; they ARE stable across
+// NPPES releases. Source: https://taxonomy.nucc.org
+export const NPPES_TAXONOMY_TO_FACILITY_TYPE: Record<string, 'asc' | 'hospital' | 'clinic'> = {
+  '261QA1903X': 'asc', // Ambulatory Surgical Center
+  '261QP3300X': 'clinic', // Pain Medicine Clinic
+  '261QM1300X': 'clinic', // Multi-Specialty Clinic
+  '281P00000X': 'hospital', // Surgical Specialty Hospital
+  '282N00000X': 'hospital', // General Acute Care Hospital
+};
+
+// Priority order when a row carries multiple matching taxonomies. Earlier =
+// higher priority. Mirrors the order-sensitivity in the submit Edge Function's
+// mapTaxonomyToFacilityType: hospital wins over asc wins over clinic.
+export const NPPES_TAXONOMY_PRIORITY: ('hospital' | 'asc' | 'clinic')[] = [
+  'hospital',
+  'asc',
+  'clinic',
+];
