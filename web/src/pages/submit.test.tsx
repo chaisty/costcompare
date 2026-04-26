@@ -185,4 +185,29 @@ describe('SubmitPage', () => {
     // Resend button still visible (user can submit fresh) — error doesn't hide it.
     expect(screen.getByRole('button', { name: /resend the link/i })).toBeEnabled();
   });
+
+  it('forwards the State filter to both CTSS calls', async () => {
+    vi.mocked(searchCtssOrganizations).mockResolvedValue([]);
+    vi.mocked(searchCtssProviders).mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText(/state \(optional/i), 'CA');
+    // Provider picker first (above facility in the form).
+    await user.type(screen.getByPlaceholderText(/search by physician/i), 'Smith');
+    await waitFor(() =>
+      expect(searchCtssProviders).toHaveBeenCalledWith(
+        'Smith',
+        expect.objectContaining({ state: 'CA' }),
+      ),
+    );
+
+    await user.type(screen.getByPlaceholderText(/search by facility/i), 'Alpha');
+    await waitFor(() =>
+      expect(searchCtssOrganizations).toHaveBeenCalledWith(
+        'Alpha',
+        expect.objectContaining({ state: 'CA' }),
+      ),
+    );
+  });
 });

@@ -4,12 +4,15 @@ import { type CtssProvider, searchCtssProviders } from '../lib/ctss';
 type Props = {
   selected: CtssProvider | null;
   onSelect: (provider: CtssProvider | null) => void;
+  // Two-letter US state code; when set, scopes CTSS suggestions by practice
+  // address. Mirrors FacilityPicker.
+  state?: string;
 };
 
 // CTSS-backed individual-provider picker. Same shape as FacilityPicker but
 // targets the NLM individuals endpoint. Search format is "Last name" (CTSS
 // indexes both first and last, but most patients remember the last name).
-export function ProviderPicker({ selected, onSelect }: Props) {
+export function ProviderPicker({ selected, onSelect, state }: Props) {
   const inputId = useId();
   const initialName = selected ? `${selected.last_name}, ${selected.first_name}` : '';
   const [query, setQuery] = useState(initialName);
@@ -37,7 +40,10 @@ export function ProviderPicker({ selected, onSelect }: Props) {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       try {
-        const rows = await searchCtssProviders(query, ctrl.signal);
+        const rows = await searchCtssProviders(query, {
+          signal: ctrl.signal,
+          state: state || null,
+        });
         if (!ctrl.signal.aborted) {
           setResults(rows);
           setError(null);
@@ -56,7 +62,7 @@ export function ProviderPicker({ selected, onSelect }: Props) {
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
       abortRef.current?.abort();
     };
-  }, [query]);
+  }, [query, state]);
 
   function onPick(p: CtssProvider) {
     onSelect(p);

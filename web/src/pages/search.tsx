@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { type RateType, type SearchRatesOptions, type SearchedRate, searchRates } from '../lib/api';
+import { US_STATES } from '../lib/us-states';
 
 // UTC-pinned date formatter so the rendered "fetched <date>" string doesn't
 // shift across timezones — source_fetched_at is recorded in UTC and a viewer
@@ -16,60 +17,6 @@ const utcDateFormatter = new Intl.DateTimeFormat('en-US', {
 // keeps the UI usable without a date picker.
 const CURRENT_YEAR = new Date().getUTCFullYear();
 const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => CURRENT_YEAR - i);
-
-const US_STATES = [
-  'AL',
-  'AK',
-  'AZ',
-  'AR',
-  'CA',
-  'CO',
-  'CT',
-  'DE',
-  'FL',
-  'GA',
-  'HI',
-  'ID',
-  'IL',
-  'IN',
-  'IA',
-  'KS',
-  'KY',
-  'LA',
-  'ME',
-  'MD',
-  'MA',
-  'MI',
-  'MN',
-  'MS',
-  'MO',
-  'MT',
-  'NE',
-  'NV',
-  'NH',
-  'NJ',
-  'NM',
-  'NY',
-  'NC',
-  'ND',
-  'OH',
-  'OK',
-  'OR',
-  'PA',
-  'RI',
-  'SC',
-  'SD',
-  'TN',
-  'TX',
-  'UT',
-  'VT',
-  'VA',
-  'WA',
-  'WV',
-  'WI',
-  'WY',
-  'DC',
-];
 
 type LoadedState = {
   rows: SearchedRate[];

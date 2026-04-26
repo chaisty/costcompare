@@ -8,6 +8,7 @@ import {
   submitQuote,
 } from '../lib/api';
 import type { CtssOrganization, CtssProvider } from '../lib/ctss';
+import { US_STATES } from '../lib/us-states';
 
 type FormErrors = Partial<Record<'price' | 'year' | 'email' | 'pickone' | 'form', string>>;
 
@@ -63,6 +64,7 @@ function resendErrorMessage(code: ResendErrorCode | 'unknown' | 'network'): stri
 export function SubmitPage() {
   const [facility, setFacility] = useState<CtssOrganization | null>(null);
   const [provider, setProvider] = useState<CtssProvider | null>(null);
+  const [stateFilter, setStateFilter] = useState<string>('');
   const [price, setPrice] = useState('');
   const [year, setYear] = useState(String(CURRENT_YEAR));
   const [hadProcedure, setHadProcedure] = useState<'yes' | 'no' | null>(null);
@@ -220,13 +222,30 @@ export function SubmitPage() {
         </p>
 
         <div className="field">
+          <label htmlFor="state-filter">State (optional, narrows the suggestions below)</label>
+          <select
+            id="state-filter"
+            name="state_filter"
+            value={stateFilter}
+            onChange={(e) => setStateFilter(e.target.value)}
+          >
+            <option value="">All states</option>
+            {US_STATES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="field">
           <label htmlFor="provider">Provider (physician)</label>
-          <ProviderPicker selected={provider} onSelect={setProvider} />
+          <ProviderPicker selected={provider} onSelect={setProvider} state={stateFilter} />
         </div>
 
         <div className="field">
           <label htmlFor="facility">Facility (surgery center, hospital, clinic)</label>
-          <FacilityPicker selected={facility} onSelect={setFacility} />
+          <FacilityPicker selected={facility} onSelect={setFacility} state={stateFilter} />
         </div>
 
         {errors.pickone ? (

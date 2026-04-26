@@ -4,13 +4,17 @@ import { type CtssOrganization, searchCtssOrganizations } from '../lib/ctss';
 type Props = {
   selected: CtssOrganization | null;
   onSelect: (facility: CtssOrganization | null) => void;
+  // When set, scope CTSS suggestions to this 2-letter US state. Two-way
+  // wiring: changing this triggers a refetch with the new scope. Empty
+  // string / undefined = unscoped (national).
+  state?: string;
 };
 
 // CTSS-backed organization picker. Replaces the previous local-facilities
 // query because patients search by name, and CTSS returns the NPI-keyed
 // authoritative roster from NPPES. The Edge Function upserts the selected
 // facility into our local cache by NPI on submit.
-export function FacilityPicker({ selected, onSelect }: Props) {
+export function FacilityPicker({ selected, onSelect, state }: Props) {
   const inputId = useId();
   const [query, setQuery] = useState(selected?.name ?? '');
   const [results, setResults] = useState<CtssOrganization[]>([]);
@@ -39,7 +43,10 @@ export function FacilityPicker({ selected, onSelect }: Props) {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       try {
-        const rows = await searchCtssOrganizations(query, ctrl.signal);
+        const rows = await searchCtssOrganizations(query, {
+          signal: ctrl.signal,
+          state: state || null,
+        });
         if (!ctrl.signal.aborted) {
           setResults(rows);
           setError(null);
@@ -60,7 +67,7 @@ export function FacilityPicker({ selected, onSelect }: Props) {
       // after the component unmounts or the query changes.
       abortRef.current?.abort();
     };
-  }, [query]);
+  }, [query, state]);
 
   function onPick(o: CtssOrganization) {
     onSelect(o);

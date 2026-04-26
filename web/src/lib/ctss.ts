@@ -50,18 +50,29 @@ function nullable(v: string | null | undefined): string | null {
   return s.length === 0 ? null : s;
 }
 
+export type CtssSearchOptions = {
+  signal?: AbortSignal;
+  // Two-letter US state code; when set, narrows CTSS results to providers
+  // whose practice address is in that state. Sent as a `q` filter on the
+  // CTSS `addr_practice.state` field. Null/empty = no scope.
+  state?: string | null;
+};
+
 async function fetchCtss(
   url: string,
   query: string,
   fields: string[],
-  signal?: AbortSignal,
+  options: CtssSearchOptions = {},
 ): Promise<CtssRaw> {
   const params = new URLSearchParams({
     terms: query,
     df: fields.join(','),
     maxList: '10',
   });
-  const res = await fetch(`${url}?${params.toString()}`, { signal });
+  if (options.state) {
+    params.set('q', `addr_practice.state:${options.state.toUpperCase()}`);
+  }
+  const res = await fetch(`${url}?${params.toString()}`, { signal: options.signal });
   if (!res.ok) {
     throw new Error(`CTSS ${res.status}`);
   }
@@ -74,11 +85,11 @@ async function fetchCtss(
 
 export async function searchCtssOrganizations(
   query: string,
-  signal?: AbortSignal,
+  options: CtssSearchOptions = {},
 ): Promise<CtssOrganization[]> {
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
-  const raw = await fetchCtss(ORG_URL, trimmed, ORG_FIELDS, signal);
+  const raw = await fetchCtss(ORG_URL, trimmed, ORG_FIELDS, options);
   const rows = raw[3] ?? [];
   return rows.map((row) => ({
     npi: row[0] ?? '',
@@ -91,11 +102,11 @@ export async function searchCtssOrganizations(
 
 export async function searchCtssProviders(
   query: string,
-  signal?: AbortSignal,
+  options: CtssSearchOptions = {},
 ): Promise<CtssProvider[]> {
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
-  const raw = await fetchCtss(IDV_URL, trimmed, IDV_FIELDS, signal);
+  const raw = await fetchCtss(IDV_URL, trimmed, IDV_FIELDS, options);
   const rows = raw[3] ?? [];
   return rows.map((row) => ({
     npi: row[0] ?? '',
